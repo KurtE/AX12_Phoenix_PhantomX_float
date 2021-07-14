@@ -22,6 +22,10 @@
 //==================================================================================================================================
 //#define USECOMMANDER
 //#define BLUETOOTH
+#if defined(KINETISK) || defined(KINETISL) || defined(__IMXRT1062__)
+#define DXL_SERIAL (HardwareSerial*)&Serial1
+#define DXL_DIR_PIN -1 // 2 - 
+#endif    
 
 //Define what hex I'm using:
 //#define MXPhoenix //setup for my MX64/106 based hexapod
@@ -116,7 +120,7 @@
 #ifdef DBGSerial
 #define OPT_TERMINAL_MONITOR 
 #define OPT_TERMINAL_MONITOR_IC    // Allow the input controller to define stuff as well
-//#define OPT_FIND_SERVO_OFFSETS    // Only useful if terminal monitor is enabled
+#define OPT_FIND_SERVO_OFFSETS    // Only useful if terminal monitor is enabled
 //#define OPT_PYPOSE
 #endif
 
@@ -133,6 +137,7 @@
 // Also define that we are using the AX12 driver
 #define USE_AX12_DRIVER
 #define OPT_BACKGROUND_PROCESS    // The AX12 has a background process
+#define OPT_CHECK_SERVO_RESET     // Try to find single servo that reset it's ID...
 #define OPT_SINGLELEG
 
 //==================================================================================================================================
@@ -158,7 +163,7 @@
 //[Arbotix Pin Numbers]
 //#if defined(__MK20DX256__)
 #if defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__) || defined(__IMXRT1062__)
-#define SOUND_PIN    23
+#define SOUND_PIN    36
 #else
 #define SOUND_PIN    1 //0xff        // Tell system we have no IO pin...
 #define USER 0                        // defaults to 13 but Arbotix on 0...
@@ -230,7 +235,11 @@
 #define cLMFemurPin     15   //Middle Left leg Hip Vertical
 #define cLMTibiaPin     17  //Middle Left leg Knee
 
+#ifdef OPT_CHECK_SERVO_RESET     // Try to find single servo that reset it's ID...
+#define cLFCoxaPin      19   //Front Left leg Hip Horizontal - Avoid servo 1
+#else
 #define cLFCoxaPin      1   //Front Left leg Hip Horizontal
+#endif
 #define cLFFemurPin     3   //Front Left leg Hip Vertical
 #define cLFTibiaPin     5   //Front Left leg Knee
 
@@ -540,6 +549,7 @@
 #define MIN_BODY_Z -120
 #else
 #define MAX_BODY_Y  150
+#define STAND_BODY_Y	50
 #define MAX_BODY_Z	80
 #define MIN_BODY_Z -80
 #endif

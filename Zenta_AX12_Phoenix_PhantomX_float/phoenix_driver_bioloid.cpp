@@ -82,6 +82,9 @@ BioloidControllerEx bioloid = BioloidControllerEx();
 
 
 // Some forward references
+#ifdef OPT_FIND_SERVO_OFFSETS
+  extern void FindServoOffsets();
+#endif
 
 
 //--------------------------------------------------------------------
@@ -90,10 +93,85 @@ BioloidControllerEx bioloid = BioloidControllerEx();
 void DynamixelServoDriver::Init(void) {
   // First lets get the actual servo positions for all of our servos...
   //  pinMode(0, OUTPUT);
+  #ifdef DXL_SERIAL
+  bioloid.begin(1000000, DXL_SERIAL, DXL_DIR_PIN);
+  #else
   bioloid.begin(1000000);
+  #endif
   _fServosFree = true;
   bioloid.poseSize = NUMSERVOS;
+#ifdef OPT_CHECK_SERVO_RESET
+  uint16_t w;
+  int     count_missing = 0;
+  int     missing_servo = -1;
+  bool    servo_1_in_table = false;
+
+  for (int i = 0; i < NUMSERVOS; i++) {
+    // Set the id
+    int servo_id = pgm_read_byte(&cPinTable[i]);
+    bioloid.setId(i, servo_id);
+
+    if (cPinTable[i] == 1)
+      servo_1_in_table = true;
+
+    // Now try to get it's position
+    w = ax12GetRegister(servo_id, AX_PRESENT_POSITION_L, 2);
+    if (w == 0xffff) {
+      // Try a second time to make sure.
+      delay(25);
+      w = ax12GetRegister(servo_id, AX_PRESENT_POSITION_L, 2);
+      if (w == 0xffff) {
+        // We have a failure
+#ifdef DBGSerial
+        DBGSerial.print("Servo(");
+        DBGSerial.print(i, DEC);
+        DBGSerial.print("): ");
+        DBGSerial.print(servo_id, DEC);
+        DBGSerial.println(" not found");
+#endif
+        if (++count_missing == 1)
+          missing_servo = servo_id;
+      }
+    }
+    delay(25);
+  }
+
+  // Now see if we should try to recover from a potential servo that renumbered itself back to 1.
+#ifdef DBGSerial
+  if (count_missing) {
+    DBGSerial.print("ERROR: Servo driver init: ");
+    DBGSerial.print(count_missing, DEC);
+    DBGSerial.println(" servos missing");
+  }
+#endif
+
+  if (count_missing && !servo_1_in_table) {
+    // Lets see if Servo 1 exists...
+    w = ax12GetRegister(1, AX_PRESENT_POSITION_L, 2); 
+    if (w != (uint16_t)0xffff) {
+      if (count_missing == 1) {
+#ifdef DBGSerial
+        DBGSerial.print("Servo recovery: Servo 1 found - setting id to ");
+        DBGSerial.println(missing_servo, DEC);
+#endif      
+        ax12SetRegister(1, AX_ID, missing_servo);        
+      } else {
+#ifdef DBGSerial
+        DBGSerial.println("Servo recovery: Servo 1 found - Multiple missing led on 1 set");
+#endif              
+        ax12SetRegister(1, AX_LED, 1);
+        ax12ReadPacket(6);  // get the response...
+      }
+    } else {
+#ifdef DBGSerial
+        DBGSerial.println("Servo recovery: Servo 1 NOT found");
+#endif              
+    }
+  }
+
+#else
   bioloid.readPose();
+#endif
 #ifdef cVoltagePin  
   for (byte i=0; i < 8; i++)
     GetBatteryVoltage();  // init the voltage pin
@@ -718,13 +796,22 @@ boolean DynamixelServoDriver::ProcessTerminalCommand(byte *psz, byte bLen)
 
   if ((bLen == 1) && ((*psz == 't') || (*psz == 'T'))) {
     // Test to see if all servos are responding...
-    for(int i=1;i<=NUMSERVOS;i++){
+    bool servo_1_in_table = false;
+    for(int i=0;i<NUMSERVOS;i++){
+      int servo_id = pgm_read_byte(&cPinTable[i]);
+      if (servo_id == 1) servo_1_in_table = true;
       int iPos;
-      iPos = ax12GetRegister(i,AX_PRESENT_POSITION_L,2);
+      iPos = ax12GetRegister(servo_id,AX_PRESENT_POSITION_L,2);
       DBGSerial.print(i,DEC);
-      DBGSerial.print(F("="));
+      DBGSerial.print("(");
+      DBGSerial.print(servo_id, DEC);
+      DBGSerial.print(F(")="));
       DBGSerial.println(iPos, DEC);
       delay(25);   
+    }
+    if (!servo_1_in_table) {
+      DBGSerial.print("*(1)=");
+      DBGSerial.println((int)ax12GetRegister(1,AX_PRESENT_POSITION_L,2), DEC);
     }
   }
   if ((*psz == 'i') || (*psz == 'I')) {

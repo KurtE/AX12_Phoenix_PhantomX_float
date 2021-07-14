@@ -521,6 +521,10 @@ void setup(){
   g_fDebugOutput = false;
 #ifdef DBGSerial    
   DBGSerial.begin(115200);
+  if (CrashReport) {
+    DBGSerial.print(CrashReport);
+  }
+
 #endif
   // Init our ServoDriver
   ServoDriver::driver()->Init();
@@ -1045,16 +1049,16 @@ void loop(void)
     // Allow the Servo driver to do stuff durint our idle time
     ServoDriver::driver()->IdleTime();
 
-    // We also have a simple debug monitor that allows us to 
-    // check things. call it here..
-#ifdef OPT_TERMINAL_MONITOR  
-    if (TerminalMonitor())
-      return;           
-#endif
     delay(20);  // give a pause between times we call if nothing is happening
 		
   }
 
+  // We also have a simple debug monitor that allows us to 
+  // check things. call it here..
+#ifdef OPT_TERMINAL_MONITOR  
+  if (TerminalMonitor())
+    return;           
+#endif
   PrevServoMoveTime = ServoMoveTime;
 	
   //Store previous g_InControlState.fRobotOn State
@@ -2636,7 +2640,7 @@ void AdjustLegPositionsToBodyHeight()
 void SoundNoTimer(unsigned long duration,  unsigned int frequency)
 {
 
-#if !(defined __MK20DX256__ || defined __MK64FX512__ || defined __MK66FX1M0__)
+#if ! defined(KINETISK) && ! defined(__IMXRT1062__)
 
 #ifdef __AVR__
   volatile uint8_t *pin_port;

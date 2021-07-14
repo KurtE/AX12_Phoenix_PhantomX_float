@@ -309,7 +309,7 @@ void USBPSXController::ControlInput(void)
 			}
 		}
 #else
-		if ((_buttons & BTN_MASKS[BUT_PS3]) && !(_buttons_prev & BTN_MASKS[BUT_PS3])) {
+		if (ButtonPressed(BUT_PS3)) {
 				if (!g_InControlState.fRobotOn) {
 					g_InControlState.fRobotOn = true;
 					fAdjustLegPositions = true;
@@ -323,13 +323,14 @@ void USBPSXController::ControlInput(void)
 #endif
 
 		if (!g_WakeUpState) {	//Don't take care of controller inputs until the WakeUpState is over (false)
-			if ((_buttons & BTN_MASKS[BUT_X]) && !(_buttons_prev & BTN_MASKS[BUT_X])) {    //Was L3
+			if (ButtonPressed(BUT_X)) {
 				MSound(1, 50, 2000);
 				_fDebugJoystick = !_fDebugJoystick;
 			}
 
 			// Cycle through modes...
-			if ((_buttons & BTN_MASKS[BUT_TRI]) && !(_buttons_prev & BTN_MASKS[BUT_TRI])) {
+			// experiment use start/options button to cycle modes.
+			if (ButtonPressed(BUT_START)) {
 				if (++_controlMode >= MODECNT) {
 					_controlMode = WALKMODE;    // cycled back around...
 					MSound(2, 50, 2000, 50, 3000);
@@ -351,15 +352,17 @@ void USBPSXController::ControlInput(void)
 			}
 
 
-			//Stand up, sit down
-			if ((_buttons & BTN_MASKS[BUT_HAT_DOWN])) {
+			//Stand up, sit down Triangle like PS2
+
+
+			if (ButtonPressed(BUT_TRI)) {
 				if (_bodyYOffset > 0) {
 					_bodyYOffset = 0;
 					g_InhibitMovement = true;//Do not allow body movement and walking
 					strcpy(g_InControlState.DataPack, "Resting position");
 				}
 				else {
-					_bodyYOffset = 80;//Zenta a little higher for avoiding the out of range issue on a symmetric MKI PhanomX
+					_bodyYOffset = STAND_BODY_Y;//Zenta a little higher for avoiding the out of range issue on a symmetric MKI PhanomX
 					g_InhibitMovement = false; //Allow body movement and walking
 					strcpy(g_InControlState.DataPack, "Ready for action!");
 				}
@@ -369,6 +372,33 @@ void USBPSXController::ControlInput(void)
 
 				fAdjustLegPositions = false;//Zenta setting this to false removes a bug
 				_fDynamicLegXZLength = false;
+			}
+
+			if (ButtonPressed(BUT_HAT_DOWN)) {
+				if (_bodyYOffset < 10) {
+					_bodyYOffset = 0;
+					g_InhibitMovement = true;//Do not allow body movement and walking
+					strcpy(g_InControlState.DataPack, "Resting position");
+				} else {
+					_bodyYOffset -= 10;
+				}
+				g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
+				g_InControlState.lWhenWeLastSetDatamode = millis();
+				g_InControlState.ForceSlowCycleWait = 2;//Do this action slowly..
+			}
+
+			if (ButtonPressed(BUT_HAT_UP)) {
+				if (_bodyYOffset < 10) {
+					_bodyYOffset = STAND_BODY_Y;	 // stand up default position.
+					g_InhibitMovement = false;//Do not allow body movement and walking
+					strcpy(g_InControlState.DataPack, "Ready for action!");
+				} else {
+					_bodyYOffset += 10;
+					if (_bodyYOffset > MAX_BODY_Y) _bodyYOffset = MAX_BODY_Y;
+				}
+				g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
+				g_InControlState.lWhenWeLastSetDatamode = millis();
+				g_InControlState.ForceSlowCycleWait = 2;//Do this action slowly..
 			}
 
 
