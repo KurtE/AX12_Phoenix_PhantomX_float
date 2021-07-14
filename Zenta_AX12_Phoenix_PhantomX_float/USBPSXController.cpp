@@ -309,7 +309,7 @@ void USBPSXController::ControlInput(void)
 			}
 		}
 #else
-		if ((_buttons & BTN_MASKS[BUT_PS3]) && !(_buttons_prev & BTN_MASKS[BUT_PS3])) {
+		if (ButtonPressed(BUT_PS3)) {
 				if (!g_InControlState.fRobotOn) {
 					g_InControlState.fRobotOn = true;
 					fAdjustLegPositions = true;
@@ -323,14 +323,14 @@ void USBPSXController::ControlInput(void)
 #endif
 
 		if (!g_WakeUpState) {	//Don't take care of controller inputs until the WakeUpState is over (false)
-			if ((_buttons & BTN_MASKS[BUT_X]) && !(_buttons_prev & BTN_MASKS[BUT_X])) {    //Was L3
+			if (ButtonPressed(BUT_X)) {
 				MSound(1, 50, 2000);
 				_fDebugJoystick = !_fDebugJoystick;
 			}
 
 			// Cycle through modes...
 			// experiment use start/options button to cycle modes.
-			if ((_buttons & BTN_MASKS[BUT_START]) && !(_buttons_prev & BTN_MASKS[BUT_START])) {
+			if (ButtonPressed(BUT_START)) {
 				if (++_controlMode >= MODECNT) {
 					_controlMode = WALKMODE;    // cycled back around...
 					MSound(2, 50, 2000, 50, 3000);
