@@ -521,6 +521,10 @@ void setup(){
   g_fDebugOutput = false;
 #ifdef DBGSerial    
   DBGSerial.begin(115200);
+  if (CrashReport) {
+    DBGSerial.print(CrashReport);
+  }
+
 #endif
   // Init our ServoDriver
   ServoDriver::driver()->Init();
@@ -2636,7 +2640,7 @@ void AdjustLegPositionsToBodyHeight()
 void SoundNoTimer(unsigned long duration,  unsigned int frequency)
 {
 
-#if !(defined __MK20DX256__ || defined __MK64FX512__ || defined __MK66FX1M0__)
+#if ! defined(KINETISK) && ! defined(__IMXRT1062__)
 
 #ifdef __AVR__
   volatile uint8_t *pin_port;

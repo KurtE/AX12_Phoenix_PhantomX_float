@@ -163,7 +163,7 @@
 //[Arbotix Pin Numbers]
 //#if defined(__MK20DX256__)
 #if defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__) || defined(__IMXRT1062__)
-#define SOUND_PIN    23
+#define SOUND_PIN    36
 #else
 #define SOUND_PIN    1 //0xff        // Tell system we have no IO pin...
 #define USER 0                        // defaults to 13 but Arbotix on 0...
@@ -549,6 +549,7 @@
 #define MIN_BODY_Z -120
 #else
 #define MAX_BODY_Y  150
+#define STAND_BODY_Y	50
 #define MAX_BODY_Z	80
 #define MIN_BODY_Z -80
 #endif
