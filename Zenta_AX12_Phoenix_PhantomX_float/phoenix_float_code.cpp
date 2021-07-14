@@ -1045,16 +1045,16 @@ void loop(void)
     // Allow the Servo driver to do stuff durint our idle time
     ServoDriver::driver()->IdleTime();
 
-    // We also have a simple debug monitor that allows us to 
-    // check things. call it here..
-#ifdef OPT_TERMINAL_MONITOR  
-    if (TerminalMonitor())
-      return;           
-#endif
     delay(20);  // give a pause between times we call if nothing is happening
 		
   }
 
+  // We also have a simple debug monitor that allows us to 
+  // check things. call it here..
+#ifdef OPT_TERMINAL_MONITOR  
+  if (TerminalMonitor())
+    return;           
+#endif
   PrevServoMoveTime = ServoMoveTime;
 	
   //Store previous g_InControlState.fRobotOn State
