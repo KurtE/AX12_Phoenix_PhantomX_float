@@ -90,7 +90,11 @@ BioloidControllerEx bioloid = BioloidControllerEx();
 void DynamixelServoDriver::Init(void) {
   // First lets get the actual servo positions for all of our servos...
   //  pinMode(0, OUTPUT);
+  #ifdef DXL_SERIAL
+  bioloid.begin(1000000, DXL_SERIAL, DXL_DIR_PIN);
+  #else
   bioloid.begin(1000000);
+  #endif
   _fServosFree = true;
   bioloid.poseSize = NUMSERVOS;
   bioloid.readPose();

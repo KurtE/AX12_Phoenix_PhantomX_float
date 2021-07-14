@@ -22,6 +22,10 @@
 //==================================================================================================================================
 //#define USECOMMANDER
 //#define BLUETOOTH
+#if defined(KINETISK) || defined(KINETISL) || defined(__IMXRT1062__)
+#define DXL_SERIAL (HardwareSerial*)&Serial1
+#define DXL_DIR_PIN -1 // 2 - 
+#endif    
 
 //Define what hex I'm using:
 //#define MXPhoenix //setup for my MX64/106 based hexapod
