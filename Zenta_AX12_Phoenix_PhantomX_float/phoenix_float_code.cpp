@@ -875,10 +875,7 @@ void loop(void)
       XBeePlaySounds(3, 60, 2000, 80, 2250, 100, 2500);
 #endif  
 			
-			strcpy(g_InControlState.DataPack, "Init wakeup pos");
-			g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
-			g_InControlState.lWhenWeLastSetDatamode = millis();
-
+			SetControllerMsg(1, "Init wakeup pos");
     }
 
     //Calculate Servo Move time
@@ -1140,9 +1137,7 @@ boolean CheckVoltage() {
 	//Send a warning to the remote when Voltage gets very low
 	if ((Voltage <= cWarningVolt) && (millis() - lWarningTimer) > 7000){//Send a warning every 7th second
 		lWarningTimer = millis();  //Keep track of time
-		strcpy(g_InControlState.DataPack, "LOW BATT ON ROBOT");
-		g_InControlState.DataMode = 2;//We want to send a text message and make some sound notification on the remote too
-		g_InControlState.lWhenWeLastSetDatamode = millis();
+		SetControllerMsg(2, "LOW BATT ON ROBOT");
 	}
   if (!g_fLowVoltageShutdown) {
     if ((Voltage < cTurnOffVol) || (Voltage >= 1999)) {
@@ -2630,6 +2625,15 @@ void AdjustLegPositionsToBodyHeight()
 #endif // CNT_HEX_INITS
 
 }
+
+void SetControllerMsg(byte data_mode, const char *msg) 
+{
+    strlcpy(g_InControlState.DataPack, msg, sizeof(g_InControlState.DataPack));
+    g_InControlState.DataMode = data_mode;//We want to send a text message to the remote when changing state
+    g_InControlState.lWhenWeLastSetDatamode = millis();
+}
+
+
 
 // BUGBUG:: Move to some library...
 //==============================================================================
