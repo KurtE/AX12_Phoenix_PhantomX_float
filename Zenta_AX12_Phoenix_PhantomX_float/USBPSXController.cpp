@@ -93,7 +93,7 @@ bool hid_driver_active[CNT_DEVICES] = { false };
 	bool bthid_driver_active[CNT_HIDDEVICES] = { false };
 #endif
 
-
+const __FlashStringHelper* const Mode_table[] PROGMEM = { F("Crawling Mode"), F("Translate Mode"), F("Rotate Mode"), F("Single Leg Mode") }; 
 const __FlashStringHelper* const Gait_table[] PROGMEM = { F("Wave gait"), F("Ripple gait"), F("Tripple gait"), F("Tripod gait") };//A table to hold the names
 const __FlashStringHelper* const LegH_table[] PROGMEM = { F("Max leg height"), F("Med High leg height"), F("Med Low leg height"), F("Low leg height") };//A table to hold the names
 
@@ -320,15 +320,7 @@ void USBPSXController::ControlInput(void)
 				else {
 					MSound(1, 50, 2000);
 				}
-				if (_controlMode == WALKMODE) {
-					SetControllerMsg(1, "Crawling Mode");
-				}
-#ifdef OPT_SINGLELEG
-				if (_controlMode == SINGLELEGMODE) {
-					g_InControlState.SelectedLeg = 2;//Zenta made the front right as default at start
-					SetControllerMsg(1, "Single LT=Hld L6=Tgl");
-				}
-#endif
+				SetControllerMsg(1, (const char *)Mode_table[_controlMode]);
 			}
 
 			//[Common functions]
@@ -807,13 +799,15 @@ boolean USBPSXController::ProcessTerminalCommand(byte *psz, byte bLen)
 //==============================================================================
 //==============================================================================
 //Send message back to remote
-void USBPSXController::SendMsgs(byte Voltage, byte CMD, char Data[21]) {
+bool USBPSXController::SendMsgs(byte Voltage, byte CMD, char Data[21]) {
 #ifdef DBGSerial
-	//if (CMD) {
+	if (CMD) {
 		DBGSerial.printf("%u %u:%s\n", Voltage, CMD, Data);
-	//}
+	}
 #endif
 	// TODO, output to optional display
+	// Tell caller OK to clear out this message now.
+	return true;
 }
 
 

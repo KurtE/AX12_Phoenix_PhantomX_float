@@ -903,8 +903,8 @@ void loop(void)
 		
 		if ((millis() - lSendDataTimer)>30){
 			lSendDataTimer = millis();
-			InputController::controller()->SendMsgs(BattPst, g_InControlState.DataMode, g_InControlState.DataPack);//Test sending data back to remote, not sure when or where it is best to place it
-			if ((g_InControlState.DataMode > 0) && (millis() - g_InControlState.lWhenWeLastSetDatamode) >300){//Reset Datamode after 300mS to be sure the remote got the package. bug bug
+			bool clear_msg = InputController::controller()->SendMsgs(BattPst, g_InControlState.DataMode, g_InControlState.DataPack);//Test sending data back to remote, not sure when or where it is best to place it
+			if ((g_InControlState.DataMode > 0) && (clear_msg || (millis() - g_InControlState.lWhenWeLastSetDatamode) >300)){//Reset Datamode after 300mS to be sure the remote got the package. bug bug
 				//MSound(1, 30, 1500);
 				
 				g_InControlState.DataMode = 0;//Reset since we only want to update it for a shorter period
