@@ -543,8 +543,9 @@ void DynamixelServoDriver::FreeServos(void)
 {
   if (!_fServosFree) {
     InputController::controller()->AllowControllerInterrupts(false);    // If on xbee on hserial tell hserial to not processess...
-		SetRegOnAllServos(AX_TORQUE_ENABLE, 50);  //First reduce the torque to very low
-		delay(1500);															//Then a short break until turning off torque 
+    SetRegOnAllServos2(AX_TORQUE_LIMIT_L, 50);  // reduce to real slow...
+		//SetRegOnAllServos(AX_TORQUE_ENABLE, 50);  //First reduce the torque to very low
+		delay(250);															  //Then a short break until turning off torque 
     SetRegOnAllServos(AX_TORQUE_ENABLE, 0);  // do this as one statement...
 #if 0    
     for (byte i = 0; i < NUMSERVOS; i++) {
@@ -729,17 +730,15 @@ void DynamixelServoDriver::WakeUpRoutine(void){
       ax12SetRegister2(254, AX_TORQUE_LIMIT_L, 300); //Reduced Torque
       //SetRegOnAllServos2(AX_TORQUE_LIMIT_L, 1023);//Turn on full Torque
 #else
-      ax12SetRegister(254, AX_TORQUE_ENABLE, 1); //Using broadcast instead
+      SetRegOnAllServos(AX_TORQUE_ENABLE, 1);  // Use sync write to do it.
       delay(500); //Waiting half a second test bug bug
-      ax12SetRegister2(254, AX_TORQUE_LIMIT_L, 1023); //Full Torque
+      SetRegOnAllServos2(AX_TORQUE_LIMIT_L, 1023);// Set full torque
 #endif
       InputController::controller()->AllowControllerInterrupts(true);
       MSound(1, 80, 2000);
       g_InControlState.ForceSlowCycleWait = 2;//Get ready slowly
 
-      strcpy(g_InControlState.DataPack, "Ready!");
-      g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
-      g_InControlState.lWhenWeLastSetDatamode = millis();
+      SetControllerMsg(1, "Ready!");
 
       for (LegIndex = 0; LegIndex < CNT_LEGS; LegIndex++) {
         cInitPosY[LegIndex] = cHexGroundPos;//Lower the legs to ground
