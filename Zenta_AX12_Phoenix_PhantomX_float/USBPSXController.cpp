@@ -296,6 +296,10 @@ void USBPSXController::ControlInput(void)
 					g_InControlState.fRobotOn = true;
 					fAdjustLegPositions = true;
 					SetControllerMsg(1, "Robot Power On.....");
+					g_WakeUpState = true;//Start the wakeup routine
+
+					//delay(10000);//Testing a bug that occour after powerup. Robot turns on and of and then on again. After programming first time it work fine. Then bug start after powerup
+					g_InControlState.ForceSlowCycleWait = 2;//Do this action slowly..
 				}
 				else {
 					controllerTurnRobotOff();
