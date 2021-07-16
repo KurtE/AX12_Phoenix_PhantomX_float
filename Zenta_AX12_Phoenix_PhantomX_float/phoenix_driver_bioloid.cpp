@@ -648,7 +648,6 @@ void DynamixelServoDriver::WakeUpRoutine(void){
   boolean PosOK = true;
 #define PosMargin 12  //we must wait if the difference between current ServoPos and IKpos is larger than this margin (12 is just over one deg in difference for MX servos)
   if (g_WakeUpState){//Check if all servos has reached their goal position
-    DBGSerial.printf("DynamixelServoDriver::WakeUpRoutine called in wakeup state %u\n", g_WakeUpState);
     //ax12SetRegister(254, AX_TORQUE_ENABLE, 1); //Using broadcast instead
     //delay(500); //Waiting half a second test bug bug
     InputController::controller()->AllowControllerInterrupts(false);
@@ -739,7 +738,6 @@ void DynamixelServoDriver::WakeUpRoutine(void){
       MSound(1, 80, 2000);
       g_InControlState.ForceSlowCycleWait = 2;//Get ready slowly
 
-    DBGSerial.println("DynamixelServoDriver::WakeUpRoutine Ready");
       SetControllerMsg(1, "Ready!");
 
       for (LegIndex = 0; LegIndex < CNT_LEGS; LegIndex++) {
