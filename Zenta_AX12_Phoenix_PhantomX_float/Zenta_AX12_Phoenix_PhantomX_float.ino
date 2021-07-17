@@ -49,6 +49,7 @@ DynamixelServoDriver dxlServo;
 
 void SketchSetup() {
   //g_InputController = &commander;
+  //InputController::controller(commander);
   InputController::controller(usbControl);
   ServoDriver::driver(dxlServo);
 

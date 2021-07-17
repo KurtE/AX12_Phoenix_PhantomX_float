@@ -554,6 +554,7 @@ void DynamixelServoDriver::FreeServos(void)
 #endif
     InputController::controller()->AllowControllerInterrupts(true);    
     _fServosFree = true;
+    Serial.printf("(FreeServos)---> Servos Are Free\n");
   }
 }
 
@@ -597,7 +598,7 @@ void DynamixelServoDriver::MakeSureServosAreOn(void)
     else {
       bioloid.readPose();
     }
-
+    Serial.printf("(MakeSureServosAreOn)---> Setting TorqL to 256\n");
     SetRegOnAllServos(AX_TORQUE_ENABLE, 1);  // Use sync write to do it.
 		SetRegOnAllServos2(AX_TORQUE_LIMIT_L, 256);//Start with very low torque
     SetRegOnAllServos(AX_LED, 0);           // turn off all servos LEDs. 
@@ -729,10 +730,12 @@ void DynamixelServoDriver::WakeUpRoutine(void){
       delay(500); //Waiting half a second test bug bug
       ax12SetRegister2(254, AX_TORQUE_LIMIT_L, 300); //Reduced Torque
       //SetRegOnAllServos2(AX_TORQUE_LIMIT_L, 1023);//Turn on full Torque
+      Serial.printf("(WakeUpRoutine) --> SafetyMode\n");
 #else
       SetRegOnAllServos(AX_TORQUE_ENABLE, 1);  // Use sync write to do it.
       delay(500); //Waiting half a second test bug bug
       SetRegOnAllServos2(AX_TORQUE_LIMIT_L, 1023);// Set full torque
+	  DBGSerial.println("(WakeUpRoutine) --> Set torque to max!");
 #endif
       InputController::controller()->AllowControllerInterrupts(true);
       MSound(1, 80, 2000);
