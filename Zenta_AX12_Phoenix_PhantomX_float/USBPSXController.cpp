@@ -480,13 +480,13 @@ void USBPSXController::ControlInput(void)
 			if (_controlMode == WALKMODE) {
 				switch (_bJoystickWalkMode) {
 				case 0:
-					g_InControlState.TravelLength.x = float(-lx);
-					g_InControlState.TravelLength.z = float(-ly);
-					g_InControlState.TravelLength.y = float(-(rx) / 4); //Right Stick Left/Right 
+					g_InControlState.TravelLength.x = float(-lx) * (5.0 / 7.0)  ;
+					g_InControlState.TravelLength.z = float(-ly) * (5.0 / 7.0);
+					g_InControlState.TravelLength.y = float(-rx) / 5.0; //Right Stick Left/Right 
 					break;
 				case 1:
-					g_InControlState.TravelLength.z = (float)(ry); //Right Stick Up/Down  
-					g_InControlState.TravelLength.y = float(-(rx) / 4); //Right Stick Left/Right 
+					g_InControlState.TravelLength.z = (float)(ry)  * (5.0 / 7.0); //Right Stick Up/Down  
+					g_InControlState.TravelLength.y = float(-rx) / 5.0; //Right Stick Left/Right 
 					break;
 	#ifdef cTurretRotPin
 				case 2:
