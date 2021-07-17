@@ -543,7 +543,7 @@ void DynamixelServoDriver::FreeServos(void)
 {
   if (!_fServosFree) {
     InputController::controller()->AllowControllerInterrupts(false);    // If on xbee on hserial tell hserial to not processess...
-		SetRegOnAllServos(AX_TORQUE_ENABLE, 50);  //First reduce the torque to very low
+		SetRegOnAllServos(AX_TORQUE_LIMIT_L, 50);  //First reduce the torque to very low
 		delay(1500);															//Then a short break until turning off torque 
     SetRegOnAllServos(AX_TORQUE_ENABLE, 0);  // do this as one statement...
 #if 0    
@@ -553,6 +553,7 @@ void DynamixelServoDriver::FreeServos(void)
 #endif
     InputController::controller()->AllowControllerInterrupts(true);    
     _fServosFree = true;
+    Serial.printf("(FreeServos)---> Servos Are Free\n");
   }
 }
 
@@ -596,9 +597,10 @@ void DynamixelServoDriver::MakeSureServosAreOn(void)
     else {
       bioloid.readPose();
     }
-
+    Serial.printf("(MakeSureServosAreOn)---> Setting TorqL to 256\n");
     SetRegOnAllServos(AX_TORQUE_ENABLE, 1);  // Use sync write to do it.
-		SetRegOnAllServos2(AX_TORQUE_LIMIT_L, 170);//Start with very low torque
+		SetRegOnAllServos2(AX_TORQUE_LIMIT_L, 256);//Start with very low torque
+    SetRegOnAllServos(AX_LED, 0);           // turn off all servos LEDs. 
 
 #if 0
     for (byte i = 0; i < NUMSERVOS; i++) {
@@ -727,10 +729,12 @@ void DynamixelServoDriver::WakeUpRoutine(void){
       delay(500); //Waiting half a second test bug bug
       ax12SetRegister2(254, AX_TORQUE_LIMIT_L, 300); //Reduced Torque
       //SetRegOnAllServos2(AX_TORQUE_LIMIT_L, 1023);//Turn on full Torque
+      Serial.printf("(WakeUpRoutine) --> SafetyMode\n");
 #else
       ax12SetRegister(254, AX_TORQUE_ENABLE, 1); //Using broadcast instead
       delay(500); //Waiting half a second test bug bug
       ax12SetRegister2(254, AX_TORQUE_LIMIT_L, 1023); //Full Torque
+	  DBGSerial.println("(WakeUpRoutine) --> Set torque to max!");	  
 #endif
       InputController::controller()->AllowControllerInterrupts(true);
       MSound(1, 80, 2000);
@@ -797,16 +801,27 @@ boolean DynamixelServoDriver::ProcessTerminalCommand(byte *psz, byte bLen)
   if ((bLen == 1) && ((*psz == 't') || (*psz == 'T'))) {
     // Test to see if all servos are responding...
     bool servo_1_in_table = false;
+    Serial.println("Index\tID\tModel:Firm\tDelay\tposition\tvoltage\tTemp");
     for(int i=0;i<NUMSERVOS;i++){
       int servo_id = pgm_read_byte(&cPinTable[i]);
       if (servo_id == 1) servo_1_in_table = true;
-      int iPos;
-      iPos = ax12GetRegister(servo_id,AX_PRESENT_POSITION_L,2);
       DBGSerial.print(i,DEC);
-      DBGSerial.print("(");
+      DBGSerial.print("\t");
       DBGSerial.print(servo_id, DEC);
-      DBGSerial.print(F(")="));
-      DBGSerial.println(iPos, DEC);
+      DBGSerial.print("\t");
+      DBGSerial.print(ax12GetRegister(servo_id,AX_MODEL_NUMBER_L,2), HEX);
+      DBGSerial.print(":");
+      DBGSerial.print(ax12GetRegister(servo_id,AX_VERSION,1), HEX);
+      DBGSerial.print("\t");
+      DBGSerial.print(ax12GetRegister(servo_id,AX_RETURN_DELAY_TIME,1), DEC);
+      DBGSerial.print("\t");
+      DBGSerial.print(ax12GetRegister(servo_id,AX_PRESENT_POSITION_L,2), DEC);
+      DBGSerial.print("\t");
+      DBGSerial.print(ax12GetRegister(servo_id,AX_PRESENT_VOLTAGE,1), DEC);
+      DBGSerial.print("\t");
+      DBGSerial.print(ax12GetRegister(servo_id,AX_PRESENT_TEMPERATURE,1), DEC);
+      DBGSerial.print("\t");
+      DBGSerial.println(dxlGetLastError(), HEX);
       delay(25);   
     }
     if (!servo_1_in_table) {

@@ -38,7 +38,7 @@
 //  #define pgm_read_word_near(x)   (*((short *)(x & 0xfffffffe))
 //  #define pgm_read_word_far(x)    (*((short *)(x & 0xfffffffe)))
 #define pgm_read_word_near(x)   ( ((*((unsigned char *)x + 1)) << 8) + (*((unsigned char *)x)))
-#define pgm_read_word_far(x)    ( ((*((unsigned char *)x + 1)) << 8) + (*((unsigned char *)x))))
+#define pgm_read_word_far(x)    ( ((*((unsigned char *)x + 1)) << 8) + (*((unsigned char *)x)))
 #define PSTR(x)  x
 #endif
 
@@ -122,7 +122,6 @@ extern const byte cTarsLength[] PROGMEM;
 #endif
 
 
-
 #ifdef __AVR__
 #if not defined(UBRR1H)
 #if cSSC_IN != 0
@@ -152,7 +151,7 @@ public:
   virtual void     Init(void);
   virtual void     ControlInput(void);
   virtual void     AllowControllerInterrupts(boolean fAllow);
-	virtual void		 SendMsgs(byte Voltage, byte CMD, char Data[21]);
+	virtual bool		 SendMsgs(byte Voltage, byte CMD, char Data[21]);
 
 #ifdef OPT_TERMINAL_MONITOR_IC  // Allow Input controller to define stuff as well
   virtual void            ShowTerminalCommandList(void);
@@ -166,6 +165,10 @@ private:
 
 // Define a function that allows us to define which controllers are to be used.
 extern void  RegisterInputController(InputController *pic);
+
+// helper function 
+extern void SetControllerMsg(byte data_mode, const char *msg);
+
 
 
 

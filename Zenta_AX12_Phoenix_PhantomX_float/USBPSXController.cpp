@@ -17,11 +17,7 @@
 //Programmer: Jeroen Janssen (aka Xan)
 //             Kurt Eckhardt (aka KurtE) - converted to c ported to Arduino...
 //
-//Hardware setup: Arbotix Commander DIY version Using two 3axis joysticks with one button on top, 2 sliderpots, 16key keypad, 6 function buttons and one power/function button
-// Orientation of the 6 function buttons (same as on the Arbotix Commander): L6, L5, L4 - R3, R2, R1
-//
-//There are two main modes that can't be combined; Walking mode and Single Leg mode
-//Button R3 are used to toogle between Walk
+//Hardware Setup: Sony PS4 or PS3 connected to Teensy using either direct wired or bluetooth
 //
 
 //
@@ -37,7 +33,7 @@
 
 //[CONSTANTS]
 enum {
-	WALKMODE = 0, //TRANSLATEMODE, ROTATEMODE, //Only two modes, walk and single leg
+	WALKMODE = 0, TRANSLATEMODE, ROTATEMODE, //Only two modes, walk and single leg
 #ifdef OPT_SINGLELEG
 	SINGLELEGMODE,
 #endif
@@ -49,13 +45,8 @@ enum {
 
 
 #define ARBOTIX_TO  5000        // if we don't get a valid message in this number of mills turn off
+#define cTravelDeadZone 6
 
-#ifndef XBeeSerial
-SoftwareSerial XBeeSerial(cXBEE_IN, cXBEE_OUT);
-#endif
-#ifndef USER
-#define USER 13
-#endif
 
 //=============================================================================
 // Global - Local to this file only...
@@ -102,7 +93,7 @@ bool hid_driver_active[CNT_DEVICES] = { false };
 	bool bthid_driver_active[CNT_HIDDEVICES] = { false };
 #endif
 
-
+const __FlashStringHelper* const Mode_table[] PROGMEM = { F("Crawling Mode"), F("Translate Mode"), F("Rotate Mode"), F("Single Leg Mode") }; 
 const __FlashStringHelper* const Gait_table[] PROGMEM = { F("Wave gait"), F("Ripple gait"), F("Tripple gait"), F("Tripod gait") };//A table to hold the names
 const __FlashStringHelper* const LegH_table[] PROGMEM = { F("Max leg height"), F("Med High leg height"), F("Med Low leg height"), F("Low leg height") };//A table to hold the names
 
@@ -159,13 +150,6 @@ void USBPSXController::Init(void)
 #endif
 	myusb.begin();
 
-#ifdef _SPARKFUN_QWIIC_KEYPAD_ARDUINO_LIBRARY_H
-	_haveKeypad = _keypad.begin(); 			//Need to pass in which bus Wire?
-
-#ifdef DBGSerial
-	if (_haveKeypad )  DBGSerial.println("Sparkfun Qwiic keypad found");
-#endif
-#endif
 
 
 	GPSeq = 0;  // init to something...
@@ -202,14 +186,6 @@ void USBPSXController::ControlInput(void)
 	// check to see if the device list has changed:
 	UpdateActiveDeviceInfo();
 	//  processPS3MotionTimer();  - not sure yet support this yet.
-#ifdef _SPARKFUN_QWIIC_KEYPAD_ARDUINO_LIBRARY_H
-	if (_haveKeypad) {
-		_keypad.updateFIFO();
-		_keypad_button = _keypad_button.getButton();
-	}  			//Need to pass in which bus Wire?
-#endif
-
-
 
 	if (joystick1.available()) {
 		// If we receive a valid message than turn robot on...
@@ -248,12 +224,11 @@ void USBPSXController::ControlInput(void)
 		int ly = joystick1.getAxis(AXIS_LY) - 127;
 		int rx = joystick1.getAxis(AXIS_RX) - 127;
 		int ry = joystick1.getAxis(AXIS_RY) - 127;
-#ifdef DBGSerial
-		if (_fDebugJoystick) {
-			DBGSerial.printf("(%d)BTNS: %x LX: %d, LY: %d, RX: %d, RY: %d LT: %d RT: %d\r\n", joystick1.joystickType(), _buttons,
-			                 lx, ly, rx, ry, joystick1.getAxis(AXIS_LT), joystick1.getAxis(AXIS_RT));
-		}
-#endif
+		
+		if(abs(lx) < cTravelDeadZone) lx = 0;
+		if(abs(ly) < cTravelDeadZone) ly = 0;
+		if(abs(rx) < cTravelDeadZone) rx = 0;
+		if(abs(ry) < cTravelDeadZone) ry = 0;
 
 #if defined(BLUETOOTH)
 		if (joystick_ps4_bt || joystick1.joystickType() == JoystickController::PS4) {
@@ -268,9 +243,16 @@ void USBPSXController::ControlInput(void)
 		else {
 			BTN_MASKS = PS3_BTNS;
 		}
+#ifdef DBGSerial
+		// do after we map the hat in for PS4
+		if (_fDebugJoystick) {
+			DBGSerial.printf("(%d)BTNS: %x LX: %d, LY: %d, RX: %d, RY: %d LT: %d RT: %d\r\n", joystick1.joystickType(), _buttons,
+			                 lx, ly, rx, ry, joystick1.getAxis(AXIS_LT), joystick1.getAxis(AXIS_RT));
+		}
+#endif
 
 #if defined(BLUETOOTH)
-		if ((_buttons & BTN_MASKS[BUT_PS3]) && !(_buttons_prev & BTN_MASKS[BUT_PS3])){
+		if (ButtonPressed(BUT_PS3)) {
 			if ((joystick1.joystickType() == JoystickController::PS3) &&
 			    (_buttons & (BTN_MASKS[BUT_L1] | BTN_MASKS[BUT_R1]))) {
 				// PS button just pressed and select button pressed act like PS4 share like...
@@ -299,12 +281,14 @@ void USBPSXController::ControlInput(void)
 					g_InControlState.fRobotOn = true;
 					fAdjustLegPositions = true;
 					g_WakeUpState = true;//Start the wakeup routine
+					SetControllerMsg(1, "(0)Robot Power On.....");
 
 					//delay(10000);//Testing a bug that occour after powerup. Robot turns on and of and then on again. After programming first time it work fine. Then bug start after powerup
 					g_InControlState.ForceSlowCycleWait = 2;//Do this action slowly..
 				}
 				else {
 					controllerTurnRobotOff();
+					SetControllerMsg(1, "(0)Robot Power Off.....");
 				}
 			}
 		}
@@ -313,11 +297,12 @@ void USBPSXController::ControlInput(void)
 				if (!g_InControlState.fRobotOn) {
 					g_InControlState.fRobotOn = true;
 					fAdjustLegPositions = true;
-					Serial.println("Robot Power On.....");
+/*---->*/					g_WakeUpState = true;//Start the wakeup routine - this made it work
+					SetControllerMsg(1, "Robot Power On.....");
 				}
 				else {
 					controllerTurnRobotOff();
-					Serial.println("Robot Power Off.....");
+					SetControllerMsg(1, "Robot Power Off.....");
 				}
 		}
 #endif
@@ -338,36 +323,35 @@ void USBPSXController::ControlInput(void)
 				else {
 					MSound(1, 50, 2000);
 				}
-				if (_controlMode == WALKMODE) {
-					strcpy(g_InControlState.DataPack, "Crawling Mode");
-				}
-#ifdef OPT_SINGLELEG
-				if (_controlMode == SINGLELEGMODE) {
-					g_InControlState.SelectedLeg = 2;//Zenta made the front right as default at start
-					strcpy(g_InControlState.DataPack, "Single LT=Hld L6=Tgl");
-				}
-#endif
-				g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
-				g_InControlState.lWhenWeLastSetDatamode = millis();
+				SetControllerMsg(1, (const char *)Mode_table[_controlMode]);
 			}
 
+			//[Common functions]
+			//Switch Balance mode on/off 
+			if (ButtonPressed(BUT_SQ)) {
+				g_InControlState.BalanceMode = !g_InControlState.BalanceMode;
+				if (g_InControlState.BalanceMode) {
+					MSound(1, 250, 1500);
+					SetControllerMsg(1, "Balance Mode: On ...");
+				}
+				else {
+					MSound(2, 100, 2000, 50, 4000);
+					SetControllerMsg(1, "Balance Mode: Off ..");
+				}
+			}
 
 			//Stand up, sit down Triangle like PS2
-
-
 			if (ButtonPressed(BUT_TRI)) {
 				if (_bodyYOffset > 0) {
 					_bodyYOffset = 0;
 					g_InhibitMovement = true;//Do not allow body movement and walking
-					strcpy(g_InControlState.DataPack, "Resting position");
+					SetControllerMsg(1, "Resting position");
 				}
 				else {
 					_bodyYOffset = STAND_BODY_Y;//Zenta a little higher for avoiding the out of range issue on a symmetric MKI PhanomX
 					g_InhibitMovement = false; //Allow body movement and walking
-					strcpy(g_InControlState.DataPack, "Ready for action!");
+					SetControllerMsg(1, "Ready for action!");
 				}
-				g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
-				g_InControlState.lWhenWeLastSetDatamode = millis();
 				g_InControlState.ForceSlowCycleWait = 2;//Do this action slowly..
 
 				fAdjustLegPositions = false;//Zenta setting this to false removes a bug
@@ -378,12 +362,10 @@ void USBPSXController::ControlInput(void)
 				if (_bodyYOffset < 10) {
 					_bodyYOffset = 0;
 					g_InhibitMovement = true;//Do not allow body movement and walking
-					strcpy(g_InControlState.DataPack, "Resting position");
+					SetControllerMsg(1, "Resting position");
 				} else {
 					_bodyYOffset -= 10;
 				}
-				g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
-				g_InControlState.lWhenWeLastSetDatamode = millis();
 				g_InControlState.ForceSlowCycleWait = 2;//Do this action slowly..
 			}
 
@@ -391,17 +373,36 @@ void USBPSXController::ControlInput(void)
 				if (_bodyYOffset < 10) {
 					_bodyYOffset = STAND_BODY_Y;	 // stand up default position.
 					g_InhibitMovement = false;//Do not allow body movement and walking
-					strcpy(g_InControlState.DataPack, "Ready for action!");
+					SetControllerMsg(1, "Ready for action!");
 				} else {
 					_bodyYOffset += 10;
 					if (_bodyYOffset > MAX_BODY_Y) _bodyYOffset = MAX_BODY_Y;
 				}
-				g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
-				g_InControlState.lWhenWeLastSetDatamode = millis();
 				g_InControlState.ForceSlowCycleWait = 2;//Do this action slowly..
 			}
 
+			if (ButtonPressed(BUT_L2)) { // Choose Speed mode
+				MSound(1, 50, 2000);
+				if (_doubleTravelOn) {
+					_doubleTravelOn = false;
+					SetControllerMsg(1, "Double Travel Off ..");
+				} else {
+					_doubleTravelOn = true;
+					SetControllerMsg(1, "Double Travel On ...");
+				}
+			}
+			if (ButtonPressed(BUT_R2)) { // Choose leg height
+				MSound(1, 50, 2000);
+				_heightSpeedMode++;
+				if (_heightSpeedMode >= (sizeof(LegH_table)/sizeof(LegH_table[0])))
+					_heightSpeedMode = 0; 
+				g_InControlState.LegLiftHeight = pgm_read_word(&cLegLiftHeight[_heightSpeedMode]);//Key A = MaxLegLiftHeight
+				SetControllerMsg(1, (const char*)LegH_table[_heightSpeedMode]);
+			}
 
+			//----------------------------------------------------
+			// Adjust with L1 button pressed
+			//----------------------------------------------------
 			if (ButtonDown(BUT_L1)) {
 				int delta = ry / 25;
 				if (delta) {
@@ -434,6 +435,8 @@ void USBPSXController::ControlInput(void)
 				rx = 0; // don't walk when adjusting the speed here...
 
 			}
+			//----------------------------------------------------
+			//----------------------------------------------------
 
 #ifdef OPT_SINGLELEG
 			//Common control functions for both walking and single leg
@@ -441,9 +444,8 @@ void USBPSXController::ControlInput(void)
 #else
 			if (_controlMode == WALKMODE) {
 #endif
-				//Check keypad inputs:
 				bool gait_changed = false;
-				if ((_buttons & BTN_MASKS[BUT_HAT_LEFT])) {
+				if (ButtonPressed(BUT_SELECT)) { // Select chooses different gait
 					g_InControlState.GaitType++;                    // Go to the next gait...
 					if (g_InControlState.GaitType < NumOfGaits) {                 // Make sure we did not exceed number of gaits...
 						MSound(1, 50, 2000);
@@ -453,140 +455,94 @@ void USBPSXController::ControlInput(void)
 					}
 					gait_changed = true;
 				}
-				if ((_keypad_button >= '1') && (_keypad_button <= '4')) {
-					g_InControlState.GaitType = _keypad_button - '1';
-					gait_changed = true;
-					MSound(1, 50, 2000);
-				}
 				if (gait_changed) {
 					//strcpy_P(g_InControlState.DataPack, (char*)pgm_read_word(&(Gait_table[Index])));
-					strcpy(g_InControlState.DataPack, (const char *)Gait_table[g_InControlState.GaitType]);
-					g_InControlState.DataMode = 1;
-					g_InControlState.lWhenWeLastSetDatamode = millis();
+					SetControllerMsg(1, (const char *)Gait_table[g_InControlState.GaitType]);
+					//Serial.println((const char *)Gait_table[g_InControlState.GaitType]);
+				}
+	
+				// Switch between Walk method 1 && Walk method 2
+				if (ButtonPressed(BUT_CIRC)) { // Change walking mode
+	#ifdef cTurretRotPin
+					if ((++_bJoystickWalkMode) > 2)
+	#else
+					if ((++_bJoystickWalkMode) > 1)
+	#endif 
+						_bJoystickWalkMode = 0;
+					MSound(1, 50, 2000 + _bJoystickWalkMode * 250);
+					Serial.printf("Walkmethod %d Selected ........\n", _bJoystickWalkMode );
 				}
 
-				// Was 7 on Zentas....
-				if (_keypad_button == '0') {
-					if (SmDiv > 20) {
-						SmDiv = 1;
-						MSound(1, 50, 1000);
-						strcpy(g_InControlState.DataPack, "Raw and fast control");
-					} else {
-						SmDiv *= 3;
-						SmDiv += 7;
-						MSound(1, 50, 1500 + SmDiv * 20);
-						strcpy(g_InControlState.DataPack, "Smooth control");
-						if (SmDiv > 20) strcpy(g_InControlState.DataPack, "Super Smooth ctrl!");
-					}
-					g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
-					g_InControlState.lWhenWeLastSetDatamode = millis();
-				}
-				// Was A-D on zentas...
-				if ((_keypad_button >= '5') && (_keypad_button <= '8')) {
-					int8_t Index = _keypad_button - '5';
-					g_InControlState.LegLiftHeight = pgm_read_word(&cLegLiftHeight[Index]);//Key A = MaxLegLiftHeight
-					strcpy(g_InControlState.DataPack, (char*)LegH_table[Index]);
-					MSound(1, 50, 2000);
-					g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
-					g_InControlState.lWhenWeLastSetDatamode = millis();
-				}
-				if (_keypad_button == '#') {
-					if (g_InControlState.BodyRotOffset.y == 0) {
-						g_InControlState.BodyRotOffset.y = 200;
-						strcpy(g_InControlState.DataPack, "YRotation offset =20");
-					}
-					else {
-						g_InControlState.BodyRotOffset.y = 0;
-						strcpy(g_InControlState.DataPack, "YRotation offset = 0");
-					}
-					g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
-					g_InControlState.lWhenWeLastSetDatamode = millis();
-					MSound(1, 50, 2000);
-				}
-
-				//Switch between absolute and relative body translation and rotation. Using R1
-				if ((_buttons & BTN_MASKS[BUT_HAT_RIGHT]) && !(_buttons_prev & BTN_MASKS[BUT_HAT_RIGHT]))  {
-				}
-				//Switch between two balance methods
-				if ((_buttons & BTN_MASKS[BUT_CIRC]) && !(_buttons_prev & BTN_MASKS[BUT_CIRC]))  {
-					g_InControlState.BalanceMode++;
-					if (g_InControlState.BalanceMode < 2) {//toogle between two modes
-						MSound(1, 250, 1500);
-						strcpy(g_InControlState.DataPack, "Balance Mode ON");
-					}
-					else {
-						g_InControlState.BalanceMode = 0;
-						MSound(2, 100, 2000, 50, 4000);
-						strcpy(g_InControlState.DataPack, "Balance Mode OFF");
-					}
-					g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
-					g_InControlState.lWhenWeLastSetDatamode = millis();
-				}
-				{	//Default body rotation
-					g_InControlState.BodyRot1.x = SmoothControl((ry) * 2, g_InControlState.BodyRot1.x, SmDiv);//g_InControlState.BodyRot1.x = (command.rightV) * 2;//Zenta *2
-					//g_InControlState.BodyRot1.y = SmoothControl((command.rightT) * 3, g_InControlState.BodyRot1.y, SmDiv);//g_InControlState.BodyRot1.y = (command.rightT) * 2;
-					g_InControlState.BodyRot1.z = SmoothControl((-rx) * 2, g_InControlState.BodyRot1.z, SmDiv);//g_InControlState.BodyRot1.z = (-command.rightH) * 2;//Zenta, *2
-				}
 			}//Common functions end
 
 			//[Walk functions]
 			if (_controlMode == WALKMODE) {
+				switch (_bJoystickWalkMode) {
+				case 0:
+					g_InControlState.TravelLength.x = float(-lx);
+					g_InControlState.TravelLength.z = float(-ly);
+					g_InControlState.TravelLength.y = float(-(rx) / 4); //Right Stick Left/Right 
+					break;
+				case 1:
+					g_InControlState.TravelLength.z = (float)(ry); //Right Stick Up/Down  
+					g_InControlState.TravelLength.y = float(-(rx) / 4); //Right Stick Left/Right 
+					break;
+	#ifdef cTurretRotPin
+				case 2:
+					g_InControlState.TravelLength.x = -lx;
+					g_InControlState.TravelLength.z = -ly;
 
-
-				//Toogle normal start walking and delayed walk. Look around, then walk effect.
-				//Toogle dampen down speed. Might run this permanently?
-				if ((_buttons & BTN_MASKS[BUT_SQ]) && !(_buttons_prev & BTN_MASKS[BUT_SQ])) {
-					g_InControlState.DampDwnSpeed = !g_InControlState.DampDwnSpeed;
-					if (g_InControlState.DampDwnSpeed) {
-						MSound(1, 250, 1500);
-						strcpy(g_InControlState.DataPack, "Damping Down ON");
-					}
-					else {
-						MSound(2, 100, 2000, 50, 4000);
-						strcpy(g_InControlState.DataPack, "Damping Down OFF");
-					}
-					g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
-					g_InControlState.lWhenWeLastSetDatamode = millis();
+					// Will use Right now stick to control turret.
+					g_InControlState.TurretRotAngle1 = max(min(g_InControlState.TurretRotAngle1 + rx / 5, cTurretRotMax1), cTurretRotMin1);      // Rotation of turret in 10ths of degree
+					g_InControlState.TurretTiltAngle1 = max(min(g_InControlState.TurretTiltAngle1 + joystick1.getAxis(AXIS_RY) / 5, cTurretTiltMax1), cTurretTiltMin1);  // tilt of turret in 10ths of degree
+	#endif
 				}
 
-
-				// Switch between Walking and Body translation using Left Top joystick button
-				{	//Default walking mode:
-#ifdef MXPhoenix
-
-
-					g_InControlState.TravelLength.x = (float)((int)command.leftH);// *5 / 7; //Left Stick Right/Left about +/- 90mm
-					g_InControlState.TravelLength.z = (float)(-(int)command.leftV);// *5 / 7; //Left Stick Up/Down about +/- 90mm
-					g_InControlState.TravelLength.y = (float)(-command.leftT) / 4;// / 3; //Left Stick Top Pot /5
-#else
-					g_InControlState.TravelLength.x = (float)((int)lx) * 5 / 7; //Left Stick Right/Left about +/- 90mm
-					g_InControlState.TravelLength.z = (float)(-(int)ly) * 5 / 7;//Left Stick Up/Down about +/- 90mm
-					//g_InControlState.TravelLength.y = (float)(-command.leftT) / 5;//Left Stick Top Pot /5
-#endif
-					//Calculate walking time delay
-					g_InControlState.InputTimeDelay = 128 - max(abs(lx), abs(ly));
+				if (!_doubleTravelOn) {  //(Double travel length)
+					g_InControlState.TravelLength.x /= 2.0;
+					g_InControlState.TravelLength.z /= 2.0;
 				}
+				g_InControlState.InputTimeDelay = 128 - max(abs(lx), abs(ly));
 			}
 
+			_bodyYShift = 0;
+
+			if (_controlMode == TRANSLATEMODE) {
+				g_InControlState.BodyPos.x = SmoothControl(((lx) * 2 / 3), g_InControlState.BodyPos.x, SmDiv);
+				g_InControlState.BodyPos.z = SmoothControl(((ly) * 2 / 3), g_InControlState.BodyPos.z, SmDiv);
+				g_InControlState.BodyRot1.y = SmoothControl(((rx) * 2), g_InControlState.BodyRot1.y, SmDiv);
+
+				//      g_InControlState.BodyPos.x = (lx)/2;
+				//      g_InControlState.BodyPos.z = -(ly)/3;
+				//      g_InControlState.BodyRot1.y = (rx)*2;
+				_bodyYShift = float(-(joystick1.getAxis(AXIS_RY)-127) / 2); //Zenta should be joystick1.getAxis(AXIS_RY) - 127
+			}
+
+			//[Rotate functions]
+			if (_controlMode == ROTATEMODE) {
+				g_InControlState.BodyRot1.x = (ly);
+				g_InControlState.BodyRot1.y = (rx) * 2;
+				g_InControlState.BodyRot1.z = (lx);
+				_bodyYShift = (-(joystick1.getAxis(AXIS_RY)-127) / 2); //Zenta Should be -127 or just replace with ry
+			}
+		//[Single leg functions]
 
 			//[Single leg functions]
 #ifdef OPT_SINGLELEG
 			if (_controlMode == SINGLELEGMODE) {
 				//Switch leg for single leg control
-				if ((_buttons & BTN_MASKS[BUT_R1]) && !(_buttons_prev & BTN_MASKS[BUT_R1]))  {
+				if (ButtonPressed(BUT_SELECT)) { // Select chooses different leg
 
 					if (g_InControlState.SelectedLeg == 5) { //Only toogle between the two front legs
 						g_InControlState.SelectedLeg = 2;//Right Leg
-						strcpy(g_InControlState.DataPack, "Right Single Leg");
+						SetControllerMsg(1, "Right Single Leg");
 						MSound(1, 50, 2000);
 					}
 					else {
 						g_InControlState.SelectedLeg = 5;//Left Leg
-						strcpy(g_InControlState.DataPack, "Left Single Leg");
+						SetControllerMsg(1, "Left Single Leg");
 						MSound(2, 50, 2000, 50, 2250);
 					}
-					g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
-					g_InControlState.lWhenWeLastSetDatamode = millis();
 				}
 				//Zenta, Fixed. replaced byte with float, also increased range
 
@@ -846,11 +802,15 @@ boolean USBPSXController::ProcessTerminalCommand(byte *psz, byte bLen)
 //==============================================================================
 //==============================================================================
 //Send message back to remote
-void USBPSXController::SendMsgs(byte Voltage, byte CMD, char Data[21]) {
+bool USBPSXController::SendMsgs(byte Voltage, byte CMD, char Data[21]) {
 #ifdef DBGSerial
-	DBGSerial.printf("void USBPSXController::SendMsgs %u %u %s\n", Voltage, CMD, Data);
+	if (CMD) {
+		DBGSerial.printf("%u %u:%s\n", Voltage, CMD, Data);
+	}
 #endif
 	// TODO, output to optional display
+	// Tell caller OK to clear out this message now.
+	return true;
 }
 
 

@@ -42,7 +42,7 @@ class USBPSXController : public InputController
 	  virtual void     Init(void);
 	  virtual void     ControlInput(void);
 	  virtual void     AllowControllerInterrupts(boolean fAllow);
-	  virtual void     SendMsgs(byte Voltage, byte CMD, char Data[21]);
+	  virtual bool     SendMsgs(byte Voltage, byte CMD, char Data[21]);
 
 	#ifdef OPT_TERMINAL_MONITOR_IC  // Allow Input controller to define stuff as well
 	  virtual void            ShowTerminalCommandList(void);

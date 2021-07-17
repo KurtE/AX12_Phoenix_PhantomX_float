@@ -151,7 +151,7 @@
 // XBEE on non mega???
 //#if defined(__MK20DX256__)
 #if defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__) || defined(__IMXRT1062__)
-#define XBeeSerial Serial2 //Caution on Teensy4.0 the RX2/TX2 pins are now on pin 7 and 8
+#define XBeeSerial Serial3 //Caution on Teensy4.0 the RX2/TX2 pins are now on pin 7 and 8
 #else
 #if defined(UBRR2H)
 #define XBeeSerial Serial2
@@ -173,7 +173,7 @@
 //#if defined(__MK20DX256__)
 #if defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__) || defined(__IMXRT1062__)
 // Our Teensy board
-#define cVoltagePin  38
+#define cVoltagePin  23
 
 #define CVADR1      402  // VD Resistor 1 - reduced as only need ratio... 40.2K and 10K
 #define CVADR2      100    // VD Resistor 2

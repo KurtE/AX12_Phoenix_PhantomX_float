@@ -1021,7 +1021,7 @@ int Commander::ReadMsgs(){
 //==============================================================================
 //==============================================================================
 //Send message back to remote
-void CommanderInputController::SendMsgs(byte Voltage, byte CMD, char Data[21]){
+bool CommanderInputController::SendMsgs(byte Voltage, byte CMD, char Data[21]){
 	//char Testtxt[21] = "Zenta Robotics test!";
 	int bChksum;
 	byte i;
@@ -1039,6 +1039,7 @@ void CommanderInputController::SendMsgs(byte Voltage, byte CMD, char Data[21]){
 		XBeeSerial.write((byte)Data[i]);
 	}
 	XBeeSerial.write((byte)bChksum);
+	return false;
 }
 /*// Compute our checksum...
   bChksum = (int)g_bButtons;
