@@ -628,4 +628,10 @@ extern const byte g_abHexMaxBodyY[] PROGMEM;
 #define cTarsFactorB	60	//4DOF ONLY
 #define cTarsFactorC	50	//4DOF ONLY
 
+#if defined __has_include
+#  if __has_include ("Local_Hex_Cfg.h")
+#    include "Local_Hex_Cfg.h"
+#  endif
+#endif
+
 #endif // HEX_CFG_H
