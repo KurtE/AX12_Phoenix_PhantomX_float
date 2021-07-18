@@ -629,6 +629,7 @@ void setup(){
 #endif  
 #endif
 	MSound(1, 150, 1500);//Just make some sound to indicate setup is done
+
 }
 
 
@@ -902,7 +903,9 @@ void loop(void)
 		
 		if ((millis() - lSendDataTimer)>30){
 			lSendDataTimer = millis();
+      
 			bool clear_msg = InputController::controller()->SendMsgs(BattPst, g_InControlState.DataMode, g_InControlState.DataPack);//Test sending data back to remote, not sure when or where it is best to place it
+
 			if ((g_InControlState.DataMode > 0) && (clear_msg || (millis() - g_InControlState.lWhenWeLastSetDatamode) >300)){//Reset Datamode after 300mS to be sure the remote got the package. bug bug
 				//MSound(1, 30, 1500);
 				

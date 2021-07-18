@@ -41,16 +41,16 @@
 #include "phoenix_input_DIY_Commander.h"
 #include "phoenix_driver_bioloid.h"
 // We are using the commander. 
-//CommanderInputController commander;
-USBPSXController usbControl;
+CommanderInputController commander;
+//USBPSXController usbControl;
 
 // Using Bioloid:
 DynamixelServoDriver dxlServo;
 
 void SketchSetup() {
   //g_InputController = &commander;
-  //InputController::controller(commander);
-  InputController::controller(usbControl);
+  InputController::controller(commander);
+  //InputController::controller(usbControl);
   ServoDriver::driver(dxlServo);
 
 }

@@ -1,4 +1,4 @@
-//#define DEBUG_COMMANDER
+#define DEBUG_COMMANDER
 //TO DO:
 //Updated function explanation
 //Define max Strafe length, rotation angles and translation length, defined in the Hex_Cfg and a default #ifndef here?
@@ -868,7 +868,15 @@ void Commander::begin(unsigned long baud){
   XBeeSerial.flush();
   XBeeSerial.setTimeout(20);  // give a little extra time
   if (XBeeSerial.readBytesUntil('\r', ab, 10) > 0) {
+      // Ok we entered _command mode, lets print out a few things about the XBee
+      PrintXBeeIDInfo("MY");
+      PrintXBeeIDInfo("DL");
+      PrintXBeeIDInfo("ID");
+      PrintXBeeIDInfo("EA");
+      PrintXBeeIDInfo("EC");
     XBeeSerial.println(F("ATCN"));	          // and exit _command mode
+
+    DBGSerial.printf("(_command.begin()) ATCN Short _cmd so return\n");
     return;  // bail out quick
   }
   // Else see if maybe properly configured but not quick _command mode.
@@ -880,21 +888,26 @@ void Commander::begin(unsigned long baud){
   if (XBeeSerial.readBytesUntil('\r', ab, 10) > 0) {
     // Note: we could check a few more things here if we run into issues.  Like: MY!=0
     // or MY != DL
-    XBeeSerial.println(F("ATGT 5"));              // Set a quick _command mode
+    XBeeSerial.println(F("ATGT 5"));          // Set a quick _command mode
     XBeeSerial.println(F("ATWR"));	          // Write out the changes
     XBeeSerial.println(F("ATCN"));	          // and exit _command mode
+
+     DBGSerial.printf("(_command.begin()) properly configured but not quick\n");
     return;  // It is already at 38400, so assume already init.
   }
-  // Failed, so check to see if we can communicate at 9600
+  // Failed, so check to see if we can communicate at 9600 properly configured but not quick
+
+     DBGSerial.printf("(_command.begin())  Failed, so check to see if we can communicate at 9600\n");
   XBeeSerial.end();
   XBeeSerial.begin(9600);
   while (XBeeSerial.read() != -1)
     ;  // flush anything out...
-
   delay(1100);
   XBeeSerial.print(F("+++"));
   if (XBeeSerial.readBytesUntil('\r', ab, 10) == 0) {
     // failed blink fast
+
+         DBGSerial.printf("(_command.begin())  Failed, Blink fast\n");
     for(int i=0;i<50;i++) {
       digitalWrite(USER, !digitalRead(USER));
       delay(50);
@@ -919,10 +932,13 @@ void Commander::begin(unsigned long baud){
     XBeeSerial.flush();              // make sure all has been output
     // lets do a quick and dirty test
     delay(250);  // Wait a bit for responses..
+
+     DBGSerial.printf("(_command.begin())  (9600) entered _command mode, lets set the appropriate stuff\n");
   }
   XBeeSerial.end();
   delay(10);
   XBeeSerial.begin(38400); //38400
+  DBGSerial.printf("(_command.begin())  END = Xbee set to 38400\n");
 #endif  
 
 }
@@ -930,9 +946,6 @@ void Commander::begin(unsigned long baud){
 //==============================================================================
 // ReadMsgs
 //==============================================================================
-
-/* process messages coming from Commander 
- *  format = 0xFF RIGHT_H RIGHT_V LEFT_H LEFT_V BUTTONS EXT CHECKSUM */
 int Commander::ReadMsgs(){
   while(XBeeSerial.available() > 0){
     if(index == -1){         // looking for new packet
@@ -952,13 +965,13 @@ int Commander::ReadMsgs(){
       vals[index] = (unsigned char) XBeeSerial.read();
       checksum += (int) vals[index];
       index++;
-      if(index == 13){ // packet complete //Zenta changed from 7 to 11
+      if(index == 7){ // packet complete
         if(checksum%256 != 255){
 #ifdef DEBUG_COMMANDER
 #ifdef DBGSerial  
-          if (g_fDebugOutput) {
+          //if (g_fDebugOutput) {
             DBGSerial.println("Packet Error");
-          }
+          //}
 #endif          
 #endif
           // packet error!
@@ -971,41 +984,21 @@ int Commander::ReadMsgs(){
           rightH = (signed char)( (int)vals[1]-128 );
           leftV = (signed char)( (int)vals[2]-128 );
           leftH = (signed char)( (int)vals[3]-128 );
-					rightT = (signed char)((int)vals[4] - 128);//Zenta move the new stuff to the end, from 6..
-					leftT = (signed char)((int)vals[5] - 128);
-					Rslider = (signed char)((int)vals[6]);
-					Lslider = (signed char)((int)vals[7]);
-					LowerRslider = (signed char)((int)vals[8]);
-					LowerLslider = (signed char)((int)vals[9]);
-          buttons = vals[10]; //Zenta, changed 4 to 8 
-          ext = vals[11];		// Zenta, changed 5 to 9
+          buttons = vals[4];
+          ext = vals[5];
 #ifdef DEBUG_COMMANDER
 #ifdef DBGSerial  
-          if (g_fDebugOutput) {
-						DBGSerial.print("Btn: ");
+          //if (g_fDebugOutput) {
             DBGSerial.print(buttons, HEX);
+            DBGSerial.print(" : ");
+            DBGSerial.print(rightV, DEC);
             DBGSerial.print(" ");
-						DBGSerial.print("Key: ");
-						DBGSerial.print(ext, DEC);
-						DBGSerial.print(" ");
-						DBGSerial.print(rightV, DEC);//
+            DBGSerial.print(rightH, DEC);
             DBGSerial.print(" ");
-						DBGSerial.print(rightH, DEC);//
+            DBGSerial.print(leftV, DEC);
             DBGSerial.print(" ");
-						DBGSerial.print(leftV, DEC);//
-            DBGSerial.print(" ");
-						DBGSerial.print(leftH, DEC);//
-						DBGSerial.print(" ");
-						DBGSerial.print(rightT, DEC);//
-						DBGSerial.print(" ");
-						DBGSerial.print(leftT, DEC);//
-						DBGSerial.print(" ");
-						DBGSerial.print(leftH, DEC);//
-						DBGSerial.print(" ");
-						DBGSerial.print(Rslider, DEC);//
-						DBGSerial.print(" ");
-            DBGSerial.println(Lslider, DEC);
-          }
+            DBGSerial.println(leftH, DEC);
+          //}
 #endif
 #endif
         }
@@ -1022,24 +1015,14 @@ int Commander::ReadMsgs(){
 //==============================================================================
 //Send message back to remote
 bool CommanderInputController::SendMsgs(byte Voltage, byte CMD, char Data[21]){
-	//char Testtxt[21] = "Zenta Robotics test!";
-	int bChksum;
-	byte i;
-	bChksum = (int)Voltage;
-	bChksum += (int)CMD;
-	//Then add more stuff into the checksum
-	for (i = 0; i < 20; i++){
-		bChksum += (int)Data[i];
+#ifdef DBGSerial
+	if (CMD) {
+		DBGSerial.printf("%u %u:%s\n", Voltage, CMD, Data);
 	}
-	bChksum = (byte)(255 - (byte)(bChksum % 256));//calc the Checksum
-	XBeeSerial.write((byte)0xff);
-	XBeeSerial.write(Voltage);
-	XBeeSerial.write(CMD);
-	for (i = 0; i < 20; i++)  {
-		XBeeSerial.write((byte)Data[i]);
-	}
-	XBeeSerial.write((byte)bChksum);
-	return false;
+#endif
+	// TODO, output to optional display
+	// Tell caller OK to clear out this message now.
+	return true;
 }
 /*// Compute our checksum...
   bChksum = (int)g_bButtons;

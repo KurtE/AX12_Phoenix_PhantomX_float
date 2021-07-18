@@ -20,9 +20,9 @@
 //
 //  If this is not defined, The included Controller should simply implement the InputController Class...
 //==================================================================================================================================
-//#define USECOMMANDER
+#define USECOMMANDER
 //#define BLUETOOTH
-#if defined(KINETISK) || defined(KINETISL) || defined(__IMXRT1062__)
+#if defined(KINETISK)  || defined(__IMXRT1062__)
 #define DXL_SERIAL (HardwareSerial*)&Serial1
 #define DXL_DIR_PIN -1 // 2 - 
 #endif    
@@ -73,12 +73,12 @@
 // 
 // Which type of control(s) do you want to compile in
 //#if defined(__MK20DX256__)
-#if defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__) || defined(__IMXRT1062__)
-#define DBGSerial         Serial
-#elif defined(UBRR2H)
+#if defined(KINETISK) || defined(KINETISL) || defined(__IMXRT1062__)
 #define DBGSerial         Serial
 #else
+#if defined(UBRR2H)
 #define DBGSerial         Serial
+#endif
 #endif
 #ifdef UseFootSensors
 //Define Input pin for foot switches
@@ -150,8 +150,8 @@
 //====================================================================
 // XBEE on non mega???
 //#if defined(__MK20DX256__)
-#if defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__) || defined(__IMXRT1062__)
-#define XBeeSerial Serial3 //Caution on Teensy4.0 the RX2/TX2 pins are now on pin 7 and 8
+#if defined(KINETISK)  || defined(__IMXRT1062__)
+#define XBeeSerial Serial3
 #else
 #if defined(UBRR2H)
 #define XBeeSerial Serial2
@@ -164,6 +164,7 @@
 //#if defined(__MK20DX256__)
 #if defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__) || defined(__IMXRT1062__)
 #define SOUND_PIN    36
+#define USER 13
 #else
 #define SOUND_PIN    1 //0xff        // Tell system we have no IO pin...
 #define USER 0                        // defaults to 13 but Arbotix on 0...
@@ -173,7 +174,7 @@
 //#if defined(__MK20DX256__)
 #if defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__) || defined(__IMXRT1062__)
 // Our Teensy board
-#define cVoltagePin  23
+#define cVoltagePin  38
 
 #define CVADR1      402  // VD Resistor 1 - reduced as only need ratio... 40.2K and 10K
 #define CVADR2      100    // VD Resistor 2
@@ -627,5 +628,11 @@ extern const byte g_abHexMaxBodyY[] PROGMEM;
 #define cTarsFactorA	70	//4DOF ONLY
 #define cTarsFactorB	60	//4DOF ONLY
 #define cTarsFactorC	50	//4DOF ONLY
+
+#if defined __has_include
+#  if __has_include ("Local_Hex_Cfg.h")
+#    include "Local_Hex_Cfg.h"
+#  endif
+#endif
 
 #endif // HEX_CFG_H
