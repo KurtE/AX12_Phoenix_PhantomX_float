@@ -27,6 +27,14 @@
 #define USE_BIOLOIDEX            // Use the Bioloid code to control the AX12 servos...
 #include <BioloidSerial.h>
 
+#if defined(USE_USB_SERIAL_DXL)
+// BUGBUG need to figure out if are configured to build with the USB Host code yet or not...
+#include <USBHost_t36.h>
+extern USBHost myusb;
+
+USBSerial userial(myusb);  // Maybe see if we can use the big buffer one or not...
+#endif
+
 
 #ifdef DBGSerial
 //#define DEBUG
@@ -93,7 +101,32 @@ BioloidControllerEx bioloid = BioloidControllerEx();
 void DynamixelServoDriver::Init(void) {
   // First lets get the actual servo positions for all of our servos...
   //  pinMode(0, OUTPUT);
-  #ifdef DXL_SERIAL
+  #if defined(USE_USB_SERIAL_DXL)
+  if (!g_myusb_begun) {
+    myusb.begin();
+    g_myusb_begun = true;   
+  }
+
+  #ifdef DBGSerial
+  DBGSerial.println("Waiting for USB Serial");
+  #endif
+  elapsedMillis em;
+  while (!userial && (em < 2000)) yield();
+  if (userial) {
+    #ifdef DBGSerial
+    DBGSerial.println("\n*** userial connected ***");
+    const uint8_t* psz = userial.manufacturer();
+    if (psz && *psz) DBGSerial.printf("  manufacturer: %s\n", psz);
+    const uint8_t* pszProduct = userial.product();
+    if (pszProduct && *pszProduct) DBGSerial.printf("  product: %s\n", pszProduct);
+    psz = userial.serialNumber();
+    if (psz && *psz) DBGSerial.printf("  Serial: %s\n", psz);
+    #endif
+  }
+  userial.begin(1000000);  // need to start off this one manually. 
+  bioloid.begin(1000000, &userial);
+
+  #elif defined(DXL_SERIAL)
   bioloid.begin(1000000, DXL_SERIAL, DXL_DIR_PIN);
   #else
   bioloid.begin(1000000);

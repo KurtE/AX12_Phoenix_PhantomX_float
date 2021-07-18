@@ -148,7 +148,10 @@ void USBPSXController::Init(void)
 #ifdef DBGSerial
 	DBGSerial.println("USB Joystick Init: ");
 #endif
-	myusb.begin();
+	if (!g_myusb_begun) {
+		myusb.begin();
+		g_myusb_begun = true;		
+	}
 
 
 

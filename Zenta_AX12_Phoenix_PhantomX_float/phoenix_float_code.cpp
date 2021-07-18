@@ -65,6 +65,7 @@ uint8_t  g_cDeltaLoopTimes = 0;
 uint32_t  g_ulWaitTimes = 0;
 uint32_t  g_cWaitTImes = 0;
 #endif
+bool g_myusb_begun = false;           // have we begun it yet?
 
 //--------------------------------------------------------------------
 //[TABLES]

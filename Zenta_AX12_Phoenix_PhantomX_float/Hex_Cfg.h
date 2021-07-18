@@ -20,8 +20,17 @@
 //
 //  If this is not defined, The included Controller should simply implement the InputController Class...
 //==================================================================================================================================
+
 //#define USECOMMANDER
 //#define BLUETOOTH
+#define USE_USB_SERIAL_DXL
+#if defined(USE_USB_SERIAL_DXL)
+  #if defined(__IMXRT1062__) || defined(ARDUINO_TEENSY36)
+  #else
+	#undef USE_USB_SERIAL_DXL
+  #endif
+#endif
+
 #if defined(KINETISK) || defined(KINETISL) || defined(__IMXRT1062__)
 #define DXL_SERIAL (HardwareSerial*)&Serial1
 #define DXL_DIR_PIN -1 // 2 - 
