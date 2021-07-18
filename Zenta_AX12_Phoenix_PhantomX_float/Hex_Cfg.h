@@ -124,7 +124,7 @@
 //#define OPT_PYPOSE
 #endif
 
-#define DEBUG_IOPINS
+//#define DEBUG_IOPINS
 #ifdef DEBUG_IOPINS
 #define DebugToggle(pin)  {digitalWrite(pin, !digitalRead(pin));}
 #define DebugWrite(pin, state) {digitalWrite(pin, state);}
