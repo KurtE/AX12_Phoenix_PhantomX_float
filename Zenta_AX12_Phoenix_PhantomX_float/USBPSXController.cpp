@@ -26,6 +26,9 @@
 #if defined(TEENSYDUINO)
 #include <Arduino.h>
 #include "Hex_Cfg.h"
+
+// Only include code if we using
+#if defined(USE_USB_JOYSTICK) 
 #include "phoenix_float.h"
 #include "USBPSXController.h"
 #include <USBHost_t36.h>
@@ -148,9 +151,11 @@ void USBPSXController::Init(void)
 #ifdef DBGSerial
 	DBGSerial.println("USB Joystick Init: ");
 #endif
-	myusb.begin();
 
-
+	if (!g_myusb_begun) {
+		myusb.begin();
+		g_myusb_begun = true;		
+	}
 
 	GPSeq = 0;  // init to something...
 
@@ -297,8 +302,11 @@ void USBPSXController::ControlInput(void)
 				if (!g_InControlState.fRobotOn) {
 					g_InControlState.fRobotOn = true;
 					fAdjustLegPositions = true;
-/*---->*/					g_WakeUpState = true;//Start the wakeup routine - this made it work
 					SetControllerMsg(1, "Robot Power On.....");
+					g_WakeUpState = true;//Start the wakeup routine
+
+					//delay(10000);//Testing a bug that occour after powerup. Robot turns on and of and then on again. After programming first time it work fine. Then bug start after powerup
+					g_InControlState.ForceSlowCycleWait = 2;//Do this action slowly..
 				}
 				else {
 					controllerTurnRobotOff();
@@ -307,11 +315,12 @@ void USBPSXController::ControlInput(void)
 		}
 #endif
 
-		if (!g_WakeUpState) {	//Don't take care of controller inputs until the WakeUpState is over (false)
 			if (ButtonPressed(BUT_X)) {
 				MSound(1, 50, 2000);
 				_fDebugJoystick = !_fDebugJoystick;
 			}
+
+		if (g_InControlState.fRobotOn && !g_WakeUpState) {	//Don't take care of controller inputs if we are not on or in until the WakeUpState is over (false)
 
 			// Cycle through modes...
 			// experiment use start/options button to cycle modes.
@@ -479,13 +488,13 @@ void USBPSXController::ControlInput(void)
 			if (_controlMode == WALKMODE) {
 				switch (_bJoystickWalkMode) {
 				case 0:
-					g_InControlState.TravelLength.x = float(-lx);
-					g_InControlState.TravelLength.z = float(-ly);
-					g_InControlState.TravelLength.y = float(-(rx) / 4); //Right Stick Left/Right 
+					g_InControlState.TravelLength.x = float(-lx) * (5.0 / 7.0)  ;
+					g_InControlState.TravelLength.z = float(-ly) * (5.0 / 7.0);
+					g_InControlState.TravelLength.y = float(-rx) / 5.0; //Right Stick Left/Right 
 					break;
 				case 1:
-					g_InControlState.TravelLength.z = (float)(ry); //Right Stick Up/Down  
-					g_InControlState.TravelLength.y = float(-(rx) / 4); //Right Stick Left/Right 
+					g_InControlState.TravelLength.z = (float)(ry)  * (5.0 / 7.0); //Right Stick Up/Down  
+					g_InControlState.TravelLength.y = float(-rx) / 5.0; //Right Stick Left/Right 
 					break;
 	#ifdef cTurretRotPin
 				case 2:
@@ -815,3 +824,4 @@ bool USBPSXController::SendMsgs(byte Voltage, byte CMD, char Data[21]) {
 
 
 #endif
+#endif // USE_USB_JOYSTICK

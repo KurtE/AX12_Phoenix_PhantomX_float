@@ -8,7 +8,7 @@
 #include "Hex_Cfg.h"
 #include "phoenix_float.h"
 #include "phoenix_driver_bioloid.h"
-
+#define DEBUG_WakeUp_Pos
 
 
 #ifndef SERVO_CENTER_VALUE
@@ -26,6 +26,14 @@
 #include <ax12Serial.h>
 #define USE_BIOLOIDEX            // Use the Bioloid code to control the AX12 servos...
 #include <BioloidSerial.h>
+
+#if defined(USE_USB_SERIAL_DXL)
+// BUGBUG need to figure out if are configured to build with the USB Host code yet or not...
+#include <USBHost_t36.h>
+extern USBHost myusb;
+
+USBSerial userial(myusb);  // Maybe see if we can use the big buffer one or not...
+#endif
 
 
 #ifdef DBGSerial
@@ -93,7 +101,32 @@ BioloidControllerEx bioloid = BioloidControllerEx();
 void DynamixelServoDriver::Init(void) {
   // First lets get the actual servo positions for all of our servos...
   //  pinMode(0, OUTPUT);
-  #ifdef DXL_SERIAL
+  #if defined(USE_USB_SERIAL_DXL)
+  if (!g_myusb_begun) {
+    myusb.begin();
+    g_myusb_begun = true;   
+  }
+
+  #ifdef DBGSerial
+  DBGSerial.println("Waiting for USB Serial");
+  #endif
+  elapsedMillis em;
+  while (!userial && (em < 2000)) yield();
+  if (userial) {
+    #ifdef DBGSerial
+    DBGSerial.println("\n*** userial connected ***");
+    const uint8_t* psz = userial.manufacturer();
+    if (psz && *psz) DBGSerial.printf("  manufacturer: %s\n", psz);
+    const uint8_t* pszProduct = userial.product();
+    if (pszProduct && *pszProduct) DBGSerial.printf("  product: %s\n", pszProduct);
+    psz = userial.serialNumber();
+    if (psz && *psz) DBGSerial.printf("  Serial: %s\n", psz);
+    #endif
+  }
+  userial.begin(1000000);  // need to start off this one manually. 
+  bioloid.begin(1000000, &userial);
+
+  #elif defined(DXL_SERIAL)
   bioloid.begin(1000000, DXL_SERIAL, DXL_DIR_PIN);
   #else
   bioloid.begin(1000000);
@@ -543,8 +576,9 @@ void DynamixelServoDriver::FreeServos(void)
 {
   if (!_fServosFree) {
     InputController::controller()->AllowControllerInterrupts(false);    // If on xbee on hserial tell hserial to not processess...
-		SetRegOnAllServos(AX_TORQUE_LIMIT_L, 50);  //First reduce the torque to very low
-		delay(1500);															//Then a short break until turning off torque 
+    SetRegOnAllServos2(AX_TORQUE_LIMIT_L, 50);  // reduce to real slow...
+		//SetRegOnAllServos(AX_TORQUE_ENABLE, 50);  //First reduce the torque to very low
+		delay(250);															  //Then a short break until turning off torque 
     SetRegOnAllServos(AX_TORQUE_ENABLE, 0);  // do this as one statement...
 #if 0    
     for (byte i = 0; i < NUMSERVOS; i++) {
@@ -731,18 +765,16 @@ void DynamixelServoDriver::WakeUpRoutine(void){
       //SetRegOnAllServos2(AX_TORQUE_LIMIT_L, 1023);//Turn on full Torque
       Serial.printf("(WakeUpRoutine) --> SafetyMode\n");
 #else
-      ax12SetRegister(254, AX_TORQUE_ENABLE, 1); //Using broadcast instead
+      SetRegOnAllServos(AX_TORQUE_ENABLE, 1);  // Use sync write to do it.
       delay(500); //Waiting half a second test bug bug
-      ax12SetRegister2(254, AX_TORQUE_LIMIT_L, 1023); //Full Torque
-	  DBGSerial.println("(WakeUpRoutine) --> Set torque to max!");	  
+      SetRegOnAllServos2(AX_TORQUE_LIMIT_L, 1023);// Set full torque
+	  DBGSerial.println("(WakeUpRoutine) --> Set torque to max!");
 #endif
       InputController::controller()->AllowControllerInterrupts(true);
       MSound(1, 80, 2000);
       g_InControlState.ForceSlowCycleWait = 2;//Get ready slowly
 
-      strcpy(g_InControlState.DataPack, "Ready!");
-      g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
-      g_InControlState.lWhenWeLastSetDatamode = millis();
+      SetControllerMsg(1, "Ready!");
 
       for (LegIndex = 0; LegIndex < CNT_LEGS; LegIndex++) {
         cInitPosY[LegIndex] = cHexGroundPos;//Lower the legs to ground

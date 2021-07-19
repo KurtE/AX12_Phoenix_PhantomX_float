@@ -14,24 +14,46 @@
 //====================================================================
 #ifndef HEX_CFG_H
 #define HEX_CFG_H
+
+//==================================================================================================================================
+// Define which Robot we are building for
+//==================================================================================================================================
+//#define MXPhoenix //setup for my MX64/106 based hexapod
+#define MKIII_AX12 //Setup for the PhantomX MKIII AX-12 based hexapod
+//#define MKI_AX18 //Setup for the PhantomX MKI symmetric with orientation sensor
+
 //==================================================================================================================================
 // Define which input classes we will use. If we wish to use more than one we need to define USEMULTI - This will define a forwarder
 //    type implementation, that the Inputcontroller will need to call.  There will be some negotion for which one is in contol.
 //
 //  If this is not defined, The included Controller should simply implement the InputController Class...
 //==================================================================================================================================
-//#define USECOMMANDER
-//#define BLUETOOTH
+#define USE_USB_JOYSTICK
+//#define BLUETOOTH   // Enable the Bluetooth code in the USB joystick.
+
+//#define USE_COMMANDER  // Use the XBee Commander code. 
+
+//==================================================================================================================================
+// Define Which Servo Controller code to use
+//==================================================================================================================================
+
+//#define USE_USB_SERIAL_DXL // You are using a USB Host based Servo controller like USB2AX or U2D2
+
+#if defined(USE_USB_SERIAL_DXL)
+  #if defined(__IMXRT1062__) || defined(ARDUINO_TEENSY36)
+  #else
+	#undef USE_USB_SERIAL_DXL
+  #endif
+#endif
+
 #if defined(KINETISK) || defined(KINETISL) || defined(__IMXRT1062__)
 #define DXL_SERIAL (HardwareSerial*)&Serial1
 #define DXL_DIR_PIN -1 // 2 - 
 #endif    
 
-//Define what hex I'm using:
-//#define MXPhoenix //setup for my MX64/106 based hexapod
-#define MKIII_AX12 //Setup for the PhantomX MKIII AX-12 based hexapod
-//#define MKI_AX18 //Setup for the PhantomX MKI symmetric with orientation sensor
-
+//==================================================================================================================================
+// Details for the different options above. 
+//==================================================================================================================================
 #ifdef MXPhoenix
 #define ServoRes 4096
 #define VoltRef 1014
@@ -124,7 +146,7 @@
 //#define OPT_PYPOSE
 #endif
 
-#define DEBUG_IOPINS
+//#define DEBUG_IOPINS
 #ifdef DEBUG_IOPINS
 #define DebugToggle(pin)  {digitalWrite(pin, !digitalRead(pin));}
 #define DebugWrite(pin, state) {digitalWrite(pin, state);}
@@ -150,8 +172,8 @@
 //====================================================================
 // XBEE on non mega???
 //#if defined(__MK20DX256__)
-#if defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__) || defined(__IMXRT1062__)
-#define XBeeSerial Serial3 //Caution on Teensy4.0 the RX2/TX2 pins are now on pin 7 and 8
+#if defined(KINETISK)  || defined(__IMXRT1062__)
+#define XBeeSerial Serial3
 #else
 #if defined(UBRR2H)
 #define XBeeSerial Serial2
@@ -164,6 +186,7 @@
 //#if defined(__MK20DX256__)
 #if defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__) || defined(__IMXRT1062__)
 #define SOUND_PIN    36
+#define USER 13
 #else
 #define SOUND_PIN    1 //0xff        // Tell system we have no IO pin...
 #define USER 0                        // defaults to 13 but Arbotix on 0...
@@ -627,5 +650,11 @@ extern const byte g_abHexMaxBodyY[] PROGMEM;
 #define cTarsFactorA	70	//4DOF ONLY
 #define cTarsFactorB	60	//4DOF ONLY
 #define cTarsFactorC	50	//4DOF ONLY
+
+#if defined __has_include
+#  if __has_include ("Local_Hex_Cfg.h")
+#    include "Local_Hex_Cfg.h"
+#  endif
+#endif
 
 #endif // HEX_CFG_H
