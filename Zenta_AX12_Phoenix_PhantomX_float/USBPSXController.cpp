@@ -26,6 +26,9 @@
 #if defined(TEENSYDUINO)
 #include <Arduino.h>
 #include "Hex_Cfg.h"
+
+// Only include code if we using
+#if defined(USE_USB_JOYSTICK) 
 #include "phoenix_float.h"
 #include "USBPSXController.h"
 #include <USBHost_t36.h>
@@ -822,3 +825,4 @@ bool USBPSXController::SendMsgs(byte Voltage, byte CMD, char Data[21]) {
 
 
 #endif
+#endif // USE_USB_JOYSTICK

@@ -29,6 +29,8 @@
 // [Include files]
 #include <Arduino.h>
 #include "Hex_Cfg.h"
+#if defined(USE_COMMANDER)  
+
 #include "phoenix_input_DIY_Commander.h"
 
 //[CONSTANTS]
@@ -982,3 +984,4 @@ bool CommanderInputController::SendMsgs(byte Voltage, byte CMD, char Data[21]){
     //XBeeSerial.write((byte)0);        // extra, not used..
 
     XBeeSerial.write((byte)bChksum);*/
+#endif // USE_COMMANDER

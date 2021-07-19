@@ -14,16 +14,31 @@
 //====================================================================
 #ifndef HEX_CFG_H
 #define HEX_CFG_H
+
+//==================================================================================================================================
+// Define which Robot we are building for
+//==================================================================================================================================
+//#define MXPhoenix //setup for my MX64/106 based hexapod
+#define MKIII_AX12 //Setup for the PhantomX MKIII AX-12 based hexapod
+//#define MKI_AX18 //Setup for the PhantomX MKI symmetric with orientation sensor
+
 //==================================================================================================================================
 // Define which input classes we will use. If we wish to use more than one we need to define USEMULTI - This will define a forwarder
 //    type implementation, that the Inputcontroller will need to call.  There will be some negotion for which one is in contol.
 //
 //  If this is not defined, The included Controller should simply implement the InputController Class...
 //==================================================================================================================================
+#define USE_USB_JOYSTICK
+//#define BLUETOOTH   // Enable the Bluetooth code in the USB joystick.
 
-//#define USECOMMANDER
-//#define BLUETOOTH
-#define USE_USB_SERIAL_DXL
+//#define USE_COMMANDER  // Use the XBee Commander code. 
+
+//==================================================================================================================================
+// Define Which Servo Controller code to use
+//==================================================================================================================================
+
+//#define USE_USB_SERIAL_DXL // You are using a USB Host based Servo controller like USB2AX or U2D2
+
 #if defined(USE_USB_SERIAL_DXL)
   #if defined(__IMXRT1062__) || defined(ARDUINO_TEENSY36)
   #else
@@ -36,11 +51,9 @@
 #define DXL_DIR_PIN -1 // 2 - 
 #endif    
 
-//Define what hex I'm using:
-//#define MXPhoenix //setup for my MX64/106 based hexapod
-#define MKIII_AX12 //Setup for the PhantomX MKIII AX-12 based hexapod
-//#define MKI_AX18 //Setup for the PhantomX MKI symmetric with orientation sensor
-
+//==================================================================================================================================
+// Details for the different options above. 
+//==================================================================================================================================
 #ifdef MXPhoenix
 #define ServoRes 4096
 #define VoltRef 1014
