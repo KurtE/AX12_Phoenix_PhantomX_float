@@ -8,7 +8,7 @@
 #include "Hex_Cfg.h"
 #include "phoenix_float.h"
 #include "phoenix_driver_bioloid.h"
-
+#define DEBUG_WakeUp_Pos
 
 
 #ifndef SERVO_CENTER_VALUE

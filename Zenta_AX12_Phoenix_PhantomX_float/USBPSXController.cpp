@@ -313,11 +313,12 @@ void USBPSXController::ControlInput(void)
 		}
 #endif
 
-		if (!g_WakeUpState) {	//Don't take care of controller inputs until the WakeUpState is over (false)
 			if (ButtonPressed(BUT_X)) {
 				MSound(1, 50, 2000);
 				_fDebugJoystick = !_fDebugJoystick;
 			}
+
+		if (g_InControlState.fRobotOn && !g_WakeUpState) {	//Don't take care of controller inputs if we are not on or in until the WakeUpState is over (false)
 
 			// Cycle through modes...
 			// experiment use start/options button to cycle modes.
