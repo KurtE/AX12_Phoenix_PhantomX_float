@@ -133,7 +133,7 @@
 //#define OPT_PYPOSE
 #endif
 
-#define DEBUG_IOPINS
+//#define DEBUG_IOPINS
 #ifdef DEBUG_IOPINS
 #define DebugToggle(pin)  {digitalWrite(pin, !digitalRead(pin));}
 #define DebugWrite(pin, state) {digitalWrite(pin, state);}
@@ -159,8 +159,8 @@
 //====================================================================
 // XBEE on non mega???
 //#if defined(__MK20DX256__)
-#if defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__) || defined(__IMXRT1062__)
-#define XBeeSerial Serial2 //Caution on Teensy4.0 the RX2/TX2 pins are now on pin 7 and 8
+#if defined(KINETISK)  || defined(__IMXRT1062__)
+#define XBeeSerial Serial3
 #else
 #if defined(UBRR2H)
 #define XBeeSerial Serial2
@@ -173,6 +173,7 @@
 //#if defined(__MK20DX256__)
 #if defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__) || defined(__IMXRT1062__)
 #define SOUND_PIN    36
+#define USER 13
 #else
 #define SOUND_PIN    1 //0xff        // Tell system we have no IO pin...
 #define USER 0                        // defaults to 13 but Arbotix on 0...
