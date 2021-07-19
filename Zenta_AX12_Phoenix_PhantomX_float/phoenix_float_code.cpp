@@ -630,7 +630,6 @@ void setup(){
 #endif  
 #endif
 	MSound(1, 150, 1500);//Just make some sound to indicate setup is done
-
 }
 
 
