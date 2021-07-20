@@ -29,9 +29,9 @@
 // [Include files]
 #include <Arduino.h>
 #include "Hex_Cfg.h"
-#if defined(USE_DIY_COMMANDER)  
+#if defined(USE_COMMANDER)  
 
-#include "phoenix_input_DIY_Commander.h"
+#include "phoenix_input_Commander.h"
 
 //[CONSTANTS]
 enum {
@@ -90,6 +90,7 @@ And how the buttons are placed on the 3Dprinted remote */
 #define BUT_RT      0x40	//Right upper inner button
 #define BUT_LT      0x80	//Left upper inner button
 
+//bugbug: todo this needs to be deleted when finished updating
 /*Keypad definitions (ASCII values)*/
 #define CKEY_0				48	//For key 1,2,3.. just add 
 #define	CKEY_A				65	//For key B,C,D.. just add
@@ -138,6 +139,10 @@ public:
   unsigned char buttons;  // 
   unsigned char ext;      // Extended function set, Zenta using this for the keypad value
 													//ext values: ASCII values: 0-9 = 48-57, A-D = 65-68, * = 42, # = 35
+
+	//Added for update
+	static byte    _buttonsPrev;
+	static byte    _extPrev;
 
     // Hooks are used as callbacks for button presses -- NOT IMPLEMENT YET
 
@@ -230,7 +235,7 @@ void CommanderInputController::ControlInput(void)
 			// [SWITCH MODES]
 
 			// Cycle through modes...
-			if ((_command.buttons & BUT_R3) && !(_buttonsPrev & BUT_R3)) {
+			if ((_command.buttons & BUT_LT) && !(_buttonsPrev & BUT_LT)) {
 				if (++_controlMode >= MODECNT) {
 					_controlMode = WALKMODE;    // cycled back around...
 					MSound(2, 50, 2000, 50, 3000);
@@ -244,7 +249,7 @@ void CommanderInputController::ControlInput(void)
 #ifdef OPT_SINGLELEG      
 				if (_controlMode == SINGLELEGMODE) {
 					g_InControlState.SelectedLeg = 2;//Zenta made the front right as default at start
-					strcpy(g_InControlState.DataPack, "Single LT=Hld L6=Tgl");
+					strcpy(g_InControlState.DataPack, "Single Leg Mode");
 				}
 #endif
 				g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
@@ -253,14 +258,14 @@ void CommanderInputController::ControlInput(void)
 
 
 			//Stand up, sit down 
-			if ((_command.ext) && !(_extPrev)) {
-				if (_command.ext == KEY_PowerBtn) {//Using powerbutton to lower/raise body
+    		if ((_command.buttons & BUT_L5) && !(_buttonsPrev & BUT_L5)) {
 					if (_bodyYOffset > 0) {
 						_bodyYOffset = 0;
 						g_InhibitMovement = true;//Do not allow body movement and walking
 						strcpy(g_InControlState.DataPack, "Resting position");
 					}
 					else {
+						//in other this is set to 32
 						_bodyYOffset = 80;//Zenta a little higher for avoiding the out of range issue on a symmetric MKI PhanomX
 						g_InhibitMovement = false; //Allow body movement and walking
 						strcpy(g_InControlState.DataPack, "Ready for action!");
@@ -272,44 +277,55 @@ void CommanderInputController::ControlInput(void)
 					fAdjustLegPositions = false;//Zenta setting this to false removes a bug
 					_fDynamicLegXZLength = false;
 				}
-			}
 
+	    // We will use L6 with the Right joystick to control both body offset as well as Speed...
+	    // We move each pass through this by a percentage of how far we are from center in each direction
+	    // We get feedback with height by seeing the robot move up and down.  For Speed, I put in sounds
+	    // which give an idea, but only for those whoes robot has a speaker
+	    int lx = _command.leftH;
+	    int ly = _command.leftV;
 
+    	if (_command.buttons & BUT_L6 ) {
+	      // raise or lower the robot on the joystick up /down
+	      // Maybe should have Min/Max
+	      int delta = _command.rightV/25;   
+	      if (delta) {
+	        _bodyYOffset = max(min(_bodyYOffset + delta, MAX_BODY_Y), 0);
+	        fAdjustLegPositions = true;
+	      }
 
-			g_InControlState.SpeedControl = (255 - _command.LowerRslider) / 4;//Zenta Testing Slider pots
-			//g_InControlState.InputTimeDelay = _command.Lslider;//just for testing direct control of ServoMoveTime
+	      // Also use right Horizontal to manually adjust the initial leg positions.
+	      sLegInitXZAdjust = lx/10;        // play with this.
+	      sLegInitAngleAdjust = ly/8;
+	      lx = 0;
+	      ly = 0;
 
-			if (_isRightSliderInitated){
-				_bodyYpos = SmoothControl((_command.Rslider - 128) / 2, _bodyYpos, 15);// Direct adjustment of body height using right slider pot
-			}
-			else {
-				if (abs(_command.Rslider - 128) < 5) {//if the sliderpot is close to centered then allow usage og the slider after startup
-					_isRightSliderInitated = true;
-				}
+	      // Likewise for Speed control
+	      delta = _command.rightH / 16;   // 
+	      if ((delta < 0) && g_InControlState.SpeedControl) {
+	        if ((word)(-delta) <  g_InControlState.SpeedControl)
+	          g_InControlState.SpeedControl += delta;
+	        else 
+	          g_InControlState.SpeedControl = 0;
+	        MSound( 1, 50, 1000+g_InControlState.SpeedControl);  
+	      }
+	      if ((delta > 0) && (g_InControlState.SpeedControl < 2000)) {
+	        g_InControlState.SpeedControl += delta;
+	        if (g_InControlState.SpeedControl > 2000)
+	          g_InControlState.SpeedControl = 2000;
+	        MSound( 1, 50, 1000+g_InControlState.SpeedControl); 
 			}
 			
-			if (_isLeftSliderInitated) {
-				_bodyZpos = SmoothControl((_command.Lslider - 128) / 2, _bodyZpos, 15);// Direct adjustment of body Z (forward/backward) position using right slider pot
-			}
-			else {
-				if (abs(_command.Lslider - 128) < 5) {//if the sliderpot is close to centered then allow usage og the slider after startup
-					_isLeftSliderInitated = true;
-				}
+	      _command.rightH = 0; // don't walk when adjusting the speed here...
 			}
 			
+#ifdef DBGSerial
+	    if ((_command.buttons & BUT_R3) && !(_buttonsPrev & BUT_R3)) {
+	      MSound(1, 50, 2000);
+	      g_fDebugOutput = !g_fDebugOutput;
+	    }
+#endif    
 
-
-
-/*#ifdef DBGSerial
-			//if ((_command.buttons & BUT_R3) && !(_buttonsPrev & BUT_R3)) {
-			//	MSound(1, 50, 2000);
-			//	g_fDebugOutput = !g_fDebugOutput;
-			//	}
-			DBGSerial.print("LS: ");
-			DBGSerial.print(_command.Lslider, DEC);
-			DBGSerial.print(" RS: ");
-			DBGSerial.println(_command.Rslider, DEC);
-#endif */  
 
 #ifdef OPT_SINGLELEG
 			//Common control functions for both walking and single leg
@@ -317,76 +333,13 @@ void CommanderInputController::ControlInput(void)
 #else
 			if (_controlMode == WALKMODE){
 #endif
-				byte Index;
-				//Check keypad inputs:
-				if ((_command.ext) && !(_extPrev)){
-					for (Index = 0; Index < NumOfGaits; Index++){
-						if (_command.ext == (CKEY_0 + Index + 1)){// key 1 to 4 select gait type
-							g_InControlState.GaitType = Index;
-							//strcpy_P(g_InControlState.DataPack, (char*)pgm_read_word(&(Gait_table[Index])));
-							strcpy(g_InControlState.DataPack, Gait_table[Index]);
-							g_InControlState.DataMode = 1;
-							g_InControlState.lWhenWeLastSetDatamode = millis();
-							MSound(1, 50, 2000);
-						}
-					}
-					if (_command.ext == (CKEY_0 + 7)){//key 7 toogle SmootControl Divfactor in 4 steps: 1 (no smoothing), 10 (smooth) and 37 (super smooth)
-						if (SmDiv > 20){
-							SmDiv = 1;
-							MSound(1, 50, 1000);
-							strcpy(g_InControlState.DataPack, "Raw and fast control");
-						}
-						else{
-							SmDiv *= 3;
-							SmDiv += 7;
-							MSound(1, 50, 1500 + SmDiv * 20);
-							strcpy(g_InControlState.DataPack, "Smooth control");
-							if (SmDiv > 20) strcpy(g_InControlState.DataPack, "Super Smooth ctrl!");
-						}
-						g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
-						g_InControlState.lWhenWeLastSetDatamode = millis();
-					}
-					for (Index = 0; Index < 4; Index++){
-						if (_command.ext == (CKEY_A + Index)){// Key A,B,C,D select leglift height
-
-							g_InControlState.LegLiftHeight = pgm_read_word(&cLegLiftHeight[Index]);//Key A = MaxLegLiftHeight
-							strcpy(g_InControlState.DataPack, (const char*)LegH_table[Index]);
-							MSound(1, 50, 2000);
-						}
-						g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
-						g_InControlState.lWhenWeLastSetDatamode = millis();
-					}
-					if (_command.ext == KEY_Hash){// Key # toogle BodyRot Y offset 0/200
-						if (g_InControlState.BodyRotOffset.y == 0){
-							g_InControlState.BodyRotOffset.y = 200;
-							strcpy(g_InControlState.DataPack, "YRotation offset =20");
-						}
-						else {
-							g_InControlState.BodyRotOffset.y = 0;
-							strcpy(g_InControlState.DataPack, "YRotation offset = 0");
-						}
-						g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
-						g_InControlState.lWhenWeLastSetDatamode = millis();
-						MSound(1, 50, 2000);
-					}
-				}
+				//Deleted Keypad stuff for now may put back in later
 
 				//Switch between absolute and relative body translation and rotation. Using R1
-				if ((_command.buttons & BUT_R1) && !(_buttonsPrev & BUT_R1)) {
-					//Not in use anymore since I'm using the extra pots for adjusting _bodyYpos
-					/*RelativeBodyMode = !RelativeBodyMode;
-					MSound(1, 50, 2000 + RelativeBodyMode * 250);
-					if (RelativeBodyMode) {
-						strcpy(g_InControlState.DataPack, "Relative Mode");
-					}
-					else{
-						strcpy(g_InControlState.DataPack, "Absolute Mode");
-					}
-					g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
-					g_InControlState.lWhenWeLastSetDatamode = millis();*/
-				}
+				//  INFO::Only absolute mode used for now
+
 				//Switch between two balance methods
-				if ((_command.buttons & BUT_R2) && !(_buttonsPrev & BUT_R2)) {
+				if ((_command.buttons & BUT_L4) && !(_buttonsPrev & BUT_L4)) {
 					g_InControlState.BalanceMode++;
 					if (g_InControlState.BalanceMode < 2) {//toogle between two modes
 						MSound(1, 250, 1500);
@@ -704,6 +657,9 @@ void CommanderInputController::ControlInput(void)
 			_buttonsPrev = _command.buttons;
 			_extPrev = _command.ext;
 		}
+
+    _buttonsPrev = _command.buttons;
+    _extPrev = _command.ext;
     _ulLastMsgTime = millis();
   } 
 	else {
@@ -870,6 +826,7 @@ void Commander::begin(unsigned long baud){
   XBeeSerial.flush();
   XBeeSerial.setTimeout(20);  // give a little extra time
   if (XBeeSerial.readBytesUntil('\r', ab, 10) > 0) {
+    // Ok we entered _command mode, lets print out a few things about the XBee
     XBeeSerial.println(F("ATCN"));	          // and exit _command mode
     return;  // bail out quick
   }
@@ -887,7 +844,7 @@ void Commander::begin(unsigned long baud){
     XBeeSerial.println(F("ATCN"));	          // and exit _command mode
     return;  // It is already at 38400, so assume already init.
   }
-  // Failed, so check to see if we can communicate at 9600
+  // Failed, so check to see if we can communicate at 9600 properly configured but not quick
   XBeeSerial.end();
   XBeeSerial.begin(9600);
   while (XBeeSerial.read() != -1)
@@ -932,9 +889,6 @@ void Commander::begin(unsigned long baud){
 //==============================================================================
 // ReadMsgs
 //==============================================================================
-
-/* process messages coming from Commander 
- *  format = 0xFF RIGHT_H RIGHT_V LEFT_H LEFT_V BUTTONS EXT CHECKSUM */
 int Commander::ReadMsgs(){
   while(XBeeSerial.available() > 0){
     if(index == -1){         // looking for new packet
@@ -954,7 +908,7 @@ int Commander::ReadMsgs(){
       vals[index] = (unsigned char) XBeeSerial.read();
       checksum += (int) vals[index];
       index++;
-      if(index == 13){ // packet complete //Zenta changed from 7 to 11
+      if(index == 7){ // packet complete
         if(checksum%256 != 255){
 #ifdef DEBUG_COMMANDER
 #ifdef DBGSerial  
@@ -973,40 +927,20 @@ int Commander::ReadMsgs(){
           rightH = (signed char)( (int)vals[1]-128 );
           leftV = (signed char)( (int)vals[2]-128 );
           leftH = (signed char)( (int)vals[3]-128 );
-					rightT = (signed char)((int)vals[4] - 128);//Zenta move the new stuff to the end, from 6..
-					leftT = (signed char)((int)vals[5] - 128);
-					Rslider = (signed char)((int)vals[6]);
-					Lslider = (signed char)((int)vals[7]);
-					LowerRslider = (signed char)((int)vals[8]);
-					LowerLslider = (signed char)((int)vals[9]);
-          buttons = vals[10]; //Zenta, changed 4 to 8 
-          ext = vals[11];		// Zenta, changed 5 to 9
+          buttons = vals[4];
+          ext = vals[5];
 #ifdef DEBUG_COMMANDER
 #ifdef DBGSerial  
           if (g_fDebugOutput) {
-						DBGSerial.print("Btn: ");
             DBGSerial.print(buttons, HEX);
+            DBGSerial.print(" : ");
+            DBGSerial.print(rightV, DEC);
             DBGSerial.print(" ");
-						DBGSerial.print("Key: ");
-						DBGSerial.print(ext, DEC);
+            DBGSerial.print(rightH, DEC);
 						DBGSerial.print(" ");
-						DBGSerial.print(rightV, DEC);//
-            DBGSerial.print(" ");
-						DBGSerial.print(rightH, DEC);//
-            DBGSerial.print(" ");
-						DBGSerial.print(leftV, DEC);//
-            DBGSerial.print(" ");
-						DBGSerial.print(leftH, DEC);//
+            DBGSerial.print(leftV, DEC);
 						DBGSerial.print(" ");
-						DBGSerial.print(rightT, DEC);//
-						DBGSerial.print(" ");
-						DBGSerial.print(leftT, DEC);//
-						DBGSerial.print(" ");
-						DBGSerial.print(leftH, DEC);//
-						DBGSerial.print(" ");
-						DBGSerial.print(Rslider, DEC);//
-						DBGSerial.print(" ");
-            DBGSerial.println(Lslider, DEC);
+            DBGSerial.println(leftH, DEC);
           }
 #endif
 #endif
@@ -1023,24 +957,15 @@ int Commander::ReadMsgs(){
 //==============================================================================
 //==============================================================================
 //Send message back to remote
-void CommanderInputController::SendMsgs(byte Voltage, byte CMD, char Data[21]){
-	//char Testtxt[21] = "Zenta Robotics test!";
-	int bChksum;
-	byte i;
-	bChksum = (int)Voltage;
-	bChksum += (int)CMD;
-	//Then add more stuff into the checksum
-	for (i = 0; i < 20; i++){
-		bChksum += (int)Data[i];
+bool CommanderInputController::SendMsgs(byte Voltage, byte CMD, char Data[21]){
+#ifdef DBGSerial
+	if (CMD) {
+		DBGSerial.printf("%u %u:%s\n", Voltage, CMD, Data);
 	}
-	bChksum = (byte)(255 - (byte)(bChksum % 256));//calc the Checksum
-	XBeeSerial.write((byte)0xff);
-	XBeeSerial.write(Voltage);
-	XBeeSerial.write(CMD);
-	for (i = 0; i < 20; i++)  {
-		XBeeSerial.write((byte)Data[i]);
-	}
-	XBeeSerial.write((byte)bChksum);
+#endif
+	// TODO, output to optional display
+	// Tell caller OK to clear out this message now.
+	return true;
 }
 /*// Compute our checksum...
   bChksum = (int)g_bButtons;
@@ -1059,5 +984,4 @@ void CommanderInputController::SendMsgs(byte Voltage, byte CMD, char Data[21]){
     //XBeeSerial.write((byte)0);        // extra, not used..
 
     XBeeSerial.write((byte)bChksum);*/
-
-#endif // USE_DIY_COMMANDER
+#endif // USE_COMMANDER

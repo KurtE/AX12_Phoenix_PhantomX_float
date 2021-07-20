@@ -31,7 +31,8 @@
 #define USE_USB_JOYSTICK
 //#define BLUETOOTH   // Enable the Bluetooth code in the USB joystick.
 
-//#define USE_COMMANDER  // Use the XBee Commander code. 
+//#define USE_COMMANDER  // Use the XBee Commander code.
+//#define_USE_DIY_COMMANDER 
 
 //==================================================================================================================================
 // Define Which Servo Controller code to use

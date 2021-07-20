@@ -47,10 +47,18 @@ USBPSXController usbControl;
 
 #if defined(USE_COMMANDER)
 // We are using the commander. 
+#include "phoenix_input_Commander.h"
+CommanderInputController commander;
+#define INPUT_CONTROLLER_DEFINED
+#endif
+
+#if defined(USE_DIY_COMMANDER)
+// We are using the diy commander. 
 #include "phoenix_input_DIY_Commander.h"
 CommanderInputController commander;
 #define INPUT_CONTROLLER_DEFINED
 #endif
+
 #ifndef INPUT_CONTROLLER_DEFINED
 #error "No input controller defined in config file" 
 #endif
@@ -65,7 +73,7 @@ void SketchSetup() {
 #if defined(USE_USB_JOYSTICK) 
   InputController::controller(usbControl);
 #endif  
-#if defined(USE_COMMANDER)
+#if defined(USE_COMMANDER) || defined(USE_DIY_COMMANDER)
   InputController::controller(commander);
 #endif
   ServoDriver::driver(dxlServo);
