@@ -102,6 +102,7 @@ class USBPSXController : public InputController
 		bool _haveKeypad = false;
 		KEYPAD _keypad; //Create instance of this object
 		#endif
+
 };
    
 #endif

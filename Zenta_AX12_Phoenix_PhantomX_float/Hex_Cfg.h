@@ -28,10 +28,11 @@
 //
 //  If this is not defined, The included Controller should simply implement the InputController Class...
 //==================================================================================================================================
-//#define USE_USB_JOYSTICK
-//#define BLUETOOTH   // Enable the Bluetooth code in the USB joystick.
+#define USE_USB_JOYSTICK
+#define USE_BT_KEYPAD
+#define BLUETOOTH   // Enable the Bluetooth code in the USB joystick.
 
-#define USE_COMMANDER  // Use the XBee Commander code.
+//#define USE_COMMANDER  // Use the XBee Commander code.
 //#define_USE_DIY_COMMANDER 
 
 //==================================================================================================================================
