@@ -26,6 +26,9 @@
 #if defined(TEENSYDUINO)
 #include <Arduino.h>
 #include "Hex_Cfg.h"
+
+// Only include code if we using
+#if defined(USE_USB_JOYSTICK) 
 #include "phoenix_float.h"
 #include "USBPSXController.h"
 #include <USBHost_t36.h>
@@ -148,9 +151,11 @@ void USBPSXController::Init(void)
 #ifdef DBGSerial
 	DBGSerial.println("USB Joystick Init: ");
 #endif
-	myusb.begin();
 
-
+	if (!g_myusb_begun) {
+		myusb.begin();
+		g_myusb_begun = true;		
+	}
 
 	GPSeq = 0;  // init to something...
 
@@ -310,11 +315,12 @@ void USBPSXController::ControlInput(void)
 		}
 #endif
 
-		if (!g_WakeUpState) {	//Don't take care of controller inputs until the WakeUpState is over (false)
 			if (ButtonPressed(BUT_X)) {
 				MSound(1, 50, 2000);
 				_fDebugJoystick = !_fDebugJoystick;
 			}
+
+		if (g_InControlState.fRobotOn && !g_WakeUpState) {	//Don't take care of controller inputs if we are not on or in until the WakeUpState is over (false)
 
 			// Cycle through modes...
 			// experiment use start/options button to cycle modes.
@@ -818,3 +824,4 @@ bool USBPSXController::SendMsgs(byte Voltage, byte CMD, char Data[21]) {
 
 
 #endif
+#endif // USE_USB_JOYSTICK

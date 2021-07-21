@@ -65,6 +65,7 @@ uint8_t  g_cDeltaLoopTimes = 0;
 uint32_t  g_ulWaitTimes = 0;
 uint32_t  g_cWaitTImes = 0;
 #endif
+bool g_myusb_begun = false;           // have we begun it yet?
 
 //--------------------------------------------------------------------
 //[TABLES]
@@ -629,7 +630,6 @@ void setup(){
 #endif  
 #endif
 	MSound(1, 150, 1500);//Just make some sound to indicate setup is done
-
 }
 
 
@@ -903,9 +903,7 @@ void loop(void)
 		
 		if ((millis() - lSendDataTimer)>30){
 			lSendDataTimer = millis();
-      
 			bool clear_msg = InputController::controller()->SendMsgs(BattPst, g_InControlState.DataMode, g_InControlState.DataPack);//Test sending data back to remote, not sure when or where it is best to place it
-
 			if ((g_InControlState.DataMode > 0) && (clear_msg || (millis() - g_InControlState.lWhenWeLastSetDatamode) >300)){//Reset Datamode after 300mS to be sure the remote got the package. bug bug
 				//MSound(1, 30, 1500);
 				
@@ -1117,7 +1115,7 @@ void WriteOutputs(void)//Zenta, should we remove this?
 //Reads the input voltage and shuts down the bot when the power drops
 byte s_bLVBeepCnt;
 boolean CheckVoltage() {
-#ifdef cTurnOffVol
+#ifdef cVoltagePin
   // Moved to Servo Driver - BUGBUG: Need to do when I merge back...
   //    Voltage = analogRead(cVoltagePin); // Battery voltage 
 
@@ -1137,10 +1135,14 @@ boolean CheckVoltage() {
   //    if (!Voltage)
   //      return;
 	//Send a warning to the remote when Voltage gets very low
+  #ifdef cWarningVolt
 	if ((Voltage <= cWarningVolt) && (millis() - lWarningTimer) > 7000){//Send a warning every 7th second
 		lWarningTimer = millis();  //Keep track of time
 		SetControllerMsg(2, "LOW BATT ON ROBOT");
 	}
+  #endif
+
+  #ifdef cTurnOffVol
   if (!g_fLowVoltageShutdown) {
     if ((Voltage < cTurnOffVol) || (Voltage >= 1999)) {
 #ifdef DBGSerial          
@@ -1180,6 +1182,7 @@ boolean CheckVoltage() {
     delay(2000);
   }
 #endif  
+#endif
   return g_fLowVoltageShutdown;
 }
 //Simple filter function FilterF is the filter factor

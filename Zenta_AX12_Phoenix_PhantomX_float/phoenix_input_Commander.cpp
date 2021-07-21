@@ -29,9 +29,9 @@
 // [Include files]
 #include <Arduino.h>
 #include "Hex_Cfg.h"
-#if defined(USE_DIY_COMMANDER)  
+#if defined(USE_COMMANDER)  
 
-#include "phoenix_input_DIY_Commander.h"
+#include "phoenix_input_Commander.h"
 
 //[CONSTANTS]
 enum {
@@ -90,12 +90,13 @@ And how the buttons are placed on the 3Dprinted remote */
 #define BUT_RT      0x40	//Right upper inner button
 #define BUT_LT      0x80	//Left upper inner button
 
+//bugbug: todo this needs to be deleted when finished updating
 /*Keypad definitions (ASCII values)*/
-#define CKEY_0				48	//For key 1,2,3.. just add 
-#define	CKEY_A				65	//For key B,C,D.. just add
-#define CKEY_Asterix	42	//* key NOT used to control robot, programming mode for the controller
-#define KEY_Hash		35	//# key
-#define KEY_PowerBtn 80 //P char Power button on remote
+//#define CKEY_0				48	//For key 1,2,3.. just add 
+//#define	CKEY_A				65	//For key B,C,D.. just add
+//#define CKEY_Asterix	42	//* key NOT used to control robot, programming mode for the controller
+//#define KEY_Hash		35	//# key
+//#define KEY_PowerBtn 80 //P char Power button on remote
 
 #ifndef MAX_BODY_Y
 #define MAX_BODY_Y 100
@@ -128,16 +129,20 @@ public:
   signed char rightH;      // horizontal stick movement = sideways or angular speed
   signed char leftV;      // vertical stick movement = tilt    
   signed char leftH;      // horizontal stick movement = pan (when we run out of pan, turn body?)
-	signed char rightT;			// Zenta right 3DOF joystick top potmeter
-	signed char leftT;			// Zenta left 3DOF joystick top potmeter
-	unsigned char Rslider;		// Zenta, upper right slider adjusting body height
-	unsigned char Lslider;		// Zenta, upper left slider adjusting body Z-translate forward backward
-	unsigned char LowerRslider;		// Zenta, lower right slider adjust speedcontrol
-	unsigned char LowerLslider;		// Zenta, lower left slider adjust InputTimedelay. Variable gaitspeed depending on stride length (any slider position above center) or manually when slider is below the center position
+	//signed char rightT;			// Zenta right 3DOF joystick top potmeter
+	//signed char leftT;			// Zenta left 3DOF joystick top potmeter
+	//unsigned char Rslider;		// Zenta, upper right slider adjusting body height
+	//unsigned char Lslider;		// Zenta, upper left slider adjusting body Z-translate forward backward
+	//unsigned char LowerRslider;		// Zenta, lower right slider adjust speedcontrol
+	//unsigned char LowerLslider;		// Zenta, lower left slider adjust InputTimedelay. Variable gaitspeed depending on stride length (any slider position above center) or manually when slider is below the center position
   // buttons are 0 or 1 (PRESSED), and bitmapped
   unsigned char buttons;  // 
-  unsigned char ext;      // Extended function set, Zenta using this for the keypad value
+  //unsigned char ext;      // Extended function set, Zenta using this for the keypad value
 													//ext values: ASCII values: 0-9 = 48-57, A-D = 65-68, * = 42, # = 35
+
+	//Added for update
+	static byte    _buttonsPrev;
+	static byte    _extPrev;
 
     // Hooks are used as callbacks for button presses -- NOT IMPLEMENT YET
 
@@ -226,9 +231,9 @@ void CommanderInputController::ControlInput(void)
 			//delay(10000);//Testing a bug that occour after powerup. Robot turns on and of and then on again. After programming first time it work fine. Then bug start after powerup
 			g_InControlState.ForceSlowCycleWait = 2;//Do this action slowly..
     }
+
 		if (!g_WakeUpState) {//Don't take care of controller inputs until the WakeUpState is over (false)
 			// [SWITCH MODES]
-
 			// Cycle through modes...
 			if ((_command.buttons & BUT_R3) && !(_buttonsPrev & BUT_R3)) {
 				if (++_controlMode >= MODECNT) {
@@ -244,7 +249,7 @@ void CommanderInputController::ControlInput(void)
 #ifdef OPT_SINGLELEG      
 				if (_controlMode == SINGLELEGMODE) {
 					g_InControlState.SelectedLeg = 2;//Zenta made the front right as default at start
-					strcpy(g_InControlState.DataPack, "Single LT=Hld L6=Tgl");
+					strcpy(g_InControlState.DataPack, "Single Leg Mode");
 				}
 #endif
 				g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
@@ -253,14 +258,14 @@ void CommanderInputController::ControlInput(void)
 
 
 			//Stand up, sit down 
-			if ((_command.ext) && !(_extPrev)) {
-				if (_command.ext == KEY_PowerBtn) {//Using powerbutton to lower/raise body
+    		if ((_command.buttons & BUT_R1) && !(_buttonsPrev & BUT_R1)) {
 					if (_bodyYOffset > 0) {
 						_bodyYOffset = 0;
 						g_InhibitMovement = true;//Do not allow body movement and walking
 						strcpy(g_InControlState.DataPack, "Resting position");
 					}
 					else {
+						//in other this is set to 32
 						_bodyYOffset = 80;//Zenta a little higher for avoiding the out of range issue on a symmetric MKI PhanomX
 						g_InhibitMovement = false; //Allow body movement and walking
 						strcpy(g_InControlState.DataPack, "Ready for action!");
@@ -272,44 +277,53 @@ void CommanderInputController::ControlInput(void)
 					fAdjustLegPositions = false;//Zenta setting this to false removes a bug
 					_fDynamicLegXZLength = false;
 				}
-			}
 
+	    // We will use L6 with the Right joystick to control both body offset as well as Speed...
+	    // We move each pass through this by a percentage of how far we are from center in each direction
+	    // We get feedback with height by seeing the robot move up and down.  For Speed, I put in sounds
+	    // which give an idea, but only for those whoes robot has a speaker
+	    //int lx = _command.leftH;  just a note to self
+	    //int ly = _command.leftV;
 
+    	if (_command.buttons & BUT_L6 ) {
+	      // raise or lower the robot on the joystick up /down
+	      // Maybe should have Min/Max
+	      int delta = _command.rightV/25;   
+	      if (delta) {
+	        _bodyYOffset = max(min(_bodyYOffset + delta, MAX_BODY_Y), 0);
+	        fAdjustLegPositions = true;
+	      }
 
-			g_InControlState.SpeedControl = (255 - _command.LowerRslider) / 4;//Zenta Testing Slider pots
-			//g_InControlState.InputTimeDelay = _command.Lslider;//just for testing direct control of ServoMoveTime
+	      // Also use right Horizontal to manually adjust the initial leg positions.
+	      sLegInitXZAdjust = _command.leftH/10;        // play with this.
+	      sLegInitAngleAdjust = _command.leftV/8;
 
-			if (_isRightSliderInitated){
-				_bodyYpos = SmoothControl((_command.Rslider - 128) / 2, _bodyYpos, 15);// Direct adjustment of body height using right slider pot
-			}
-			else {
-				if (abs(_command.Rslider - 128) < 5) {//if the sliderpot is close to centered then allow usage og the slider after startup
-					_isRightSliderInitated = true;
-				}
+	      // Likewise for Speed control
+	      delta = _command.rightH / 16;   // 
+	      if ((delta < 0) && g_InControlState.SpeedControl) {
+	        if ((word)(-delta) <  g_InControlState.SpeedControl)
+	          g_InControlState.SpeedControl += delta;
+	        else 
+	          g_InControlState.SpeedControl = 0;
+	        MSound( 1, 50, 1000+g_InControlState.SpeedControl);  
+	      }
+	      if ((delta > 0) && (g_InControlState.SpeedControl < 2000)) {
+	        g_InControlState.SpeedControl += delta;
+	        if (g_InControlState.SpeedControl > 2000)
+	          g_InControlState.SpeedControl = 2000;
+	        MSound( 1, 50, 1000+g_InControlState.SpeedControl); 
 			}
 			
-			if (_isLeftSliderInitated) {
-				_bodyZpos = SmoothControl((_command.Lslider - 128) / 2, _bodyZpos, 15);// Direct adjustment of body Z (forward/backward) position using right slider pot
-			}
-			else {
-				if (abs(_command.Lslider - 128) < 5) {//if the sliderpot is close to centered then allow usage og the slider after startup
-					_isLeftSliderInitated = true;
-				}
-			}
+	      _command.rightH = 0; // don't walk when adjusting the speed here...
+		}
 			
+#ifdef DBGSerial
+	    if ((_command.buttons & BUT_R3) && !(_buttonsPrev & BUT_R3)) {
+	      MSound(1, 50, 2000);
+	      g_fDebugOutput = !g_fDebugOutput;
+	    }
+#endif    
 
-
-
-/*#ifdef DBGSerial
-			//if ((_command.buttons & BUT_R3) && !(_buttonsPrev & BUT_R3)) {
-			//	MSound(1, 50, 2000);
-			//	g_fDebugOutput = !g_fDebugOutput;
-			//	}
-			DBGSerial.print("LS: ");
-			DBGSerial.print(_command.Lslider, DEC);
-			DBGSerial.print(" RS: ");
-			DBGSerial.println(_command.Rslider, DEC);
-#endif */  
 
 #ifdef OPT_SINGLELEG
 			//Common control functions for both walking and single leg
@@ -317,74 +331,11 @@ void CommanderInputController::ControlInput(void)
 #else
 			if (_controlMode == WALKMODE){
 #endif
-				byte Index;
-				//Check keypad inputs:
-				if ((_command.ext) && !(_extPrev)){
-					for (Index = 0; Index < NumOfGaits; Index++){
-						if (_command.ext == (CKEY_0 + Index + 1)){// key 1 to 4 select gait type
-							g_InControlState.GaitType = Index;
-							//strcpy_P(g_InControlState.DataPack, (char*)pgm_read_word(&(Gait_table[Index])));
-							strcpy(g_InControlState.DataPack, Gait_table[Index]);
-							g_InControlState.DataMode = 1;
-							g_InControlState.lWhenWeLastSetDatamode = millis();
-							MSound(1, 50, 2000);
-						}
-					}
-					if (_command.ext == (CKEY_0 + 7)){//key 7 toogle SmootControl Divfactor in 4 steps: 1 (no smoothing), 10 (smooth) and 37 (super smooth)
-						if (SmDiv > 20){
-							SmDiv = 1;
-							MSound(1, 50, 1000);
-							strcpy(g_InControlState.DataPack, "Raw and fast control");
-						}
-						else{
-							SmDiv *= 3;
-							SmDiv += 7;
-							MSound(1, 50, 1500 + SmDiv * 20);
-							strcpy(g_InControlState.DataPack, "Smooth control");
-							if (SmDiv > 20) strcpy(g_InControlState.DataPack, "Super Smooth ctrl!");
-						}
-						g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
-						g_InControlState.lWhenWeLastSetDatamode = millis();
-					}
-					for (Index = 0; Index < 4; Index++){
-						if (_command.ext == (CKEY_A + Index)){// Key A,B,C,D select leglift height
-
-							g_InControlState.LegLiftHeight = pgm_read_word(&cLegLiftHeight[Index]);//Key A = MaxLegLiftHeight
-							strcpy(g_InControlState.DataPack, (const char*)LegH_table[Index]);
-							MSound(1, 50, 2000);
-						}
-						g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
-						g_InControlState.lWhenWeLastSetDatamode = millis();
-					}
-					if (_command.ext == KEY_Hash){// Key # toogle BodyRot Y offset 0/200
-						if (g_InControlState.BodyRotOffset.y == 0){
-							g_InControlState.BodyRotOffset.y = 200;
-							strcpy(g_InControlState.DataPack, "YRotation offset =20");
-						}
-						else {
-							g_InControlState.BodyRotOffset.y = 0;
-							strcpy(g_InControlState.DataPack, "YRotation offset = 0");
-						}
-						g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
-						g_InControlState.lWhenWeLastSetDatamode = millis();
-						MSound(1, 50, 2000);
-					}
-				}
+				//Deleted Keypad stuff for now may put back in later
 
 				//Switch between absolute and relative body translation and rotation. Using R1
-				if ((_command.buttons & BUT_R1) && !(_buttonsPrev & BUT_R1)) {
-					//Not in use anymore since I'm using the extra pots for adjusting _bodyYpos
-					/*RelativeBodyMode = !RelativeBodyMode;
-					MSound(1, 50, 2000 + RelativeBodyMode * 250);
-					if (RelativeBodyMode) {
-						strcpy(g_InControlState.DataPack, "Relative Mode");
-					}
-					else{
-						strcpy(g_InControlState.DataPack, "Absolute Mode");
-					}
-					g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
-					g_InControlState.lWhenWeLastSetDatamode = millis();*/
-				}
+				//  INFO::Only absolute mode used for now
+
 				//Switch between two balance methods
 				if ((_command.buttons & BUT_R2) && !(_buttonsPrev & BUT_R2)) {
 					g_InControlState.BalanceMode++;
@@ -400,6 +351,8 @@ void CommanderInputController::ControlInput(void)
 					g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
 					g_InControlState.lWhenWeLastSetDatamode = millis();
 				}
+
+
 				// Switch between rotation and Body translation using Right Top joystick button
 				if ((_command.buttons & BUT_RT) && !(_buttonsPrev & BUT_RT)) {
 
@@ -415,67 +368,44 @@ void CommanderInputController::ControlInput(void)
 					g_InControlState.lWhenWeLastSetDatamode = millis();
 				}
 
+				//uses same joystick controls as the PS4.
 				if (_RtopStickWalkMode){//Body translation
-					g_InControlState.BodyPos.x = SmoothControl((_command.rightH) / 2, g_InControlState.BodyPos.x, SmDiv);
-					_bodyZShift = SmoothControl((_command.rightT) / 2, _bodyZShift, SmDiv);
-					/*if (RelativeBodyMode && (abs(_command.rightV)> cTDZ)){
-						_bodyYOffset = max(_bodyYOffset + ((float)_command.rightV / 100), 0);
-					}
-					else{
-						_bodyYShift = SmoothControl((_command.rightV) / 2, _bodyYShift, SmDiv);
-					}*/
-					_bodyYShift = SmoothControl((_command.rightV) / 2, _bodyYShift, SmDiv);
+					g_InControlState.BodyPos.x = SmoothControl(((_command.rightH) * 2 / 3), g_InControlState.BodyPos.x, SmDiv);
+					_bodyZShift = SmoothControl(((_command.leftV) * 2 / 3), _bodyZShift, SmDiv);
+					_bodyYShift = SmoothControl(((_command.rightV) * 2), _bodyYShift, SmDiv);
 				}
 				else{//Default body rotation
-					g_InControlState.BodyRot1.x = SmoothControl((_command.rightV) * 2, g_InControlState.BodyRot1.x, SmDiv);//g_InControlState.BodyRot1.x = (_command.rightV) * 2;//Zenta *2
-					g_InControlState.BodyRot1.y = SmoothControl((_command.rightT) * 3, g_InControlState.BodyRot1.y, SmDiv);//g_InControlState.BodyRot1.y = (_command.rightT) * 2;
-					g_InControlState.BodyRot1.z = SmoothControl((-_command.rightH) * 2, g_InControlState.BodyRot1.z, SmDiv);//g_InControlState.BodyRot1.z = (-_command.rightH) * 2;//Zenta, *2
+					g_InControlState.BodyRot1.x = SmoothControl((_command.leftV) * 2, g_InControlState.BodyRot1.x, SmDiv);//g_InControlState.BodyRot1.x = (_command.rightV) * 2;//Zenta *2
+					g_InControlState.BodyRot1.y = SmoothControl((_command.rightH) * 3, g_InControlState.BodyRot1.y, SmDiv);//g_InControlState.BodyRot1.y = (_command.rightT) * 2;
+					g_InControlState.BodyRot1.z = SmoothControl((-_command.rightV) * 2, g_InControlState.BodyRot1.z, SmDiv);//g_InControlState.BodyRot1.z = (-_command.rightH) * 2;//Zenta, *2
 				}
-			}//Common functions end
+
+			} //Common functions end
 
 			//[Walk functions]
 			if (_controlMode == WALKMODE) {
-
-				
-#ifdef UseFootSensors	//MXPhoenix is the only one that have feet sensors		
-				//Switch TA mode on/off 
-				if ((_command.buttons & BUT_L4) && !(_buttonsPrev & BUT_L4)) {
-					g_InControlState.TAmode = !g_InControlState.TAmode;
-					if (g_InControlState.TAmode) {
-						MSound(1, 250, 1500);
-						strcpy(g_InControlState.DataPack, "TA Mode ON");
+//#ifdef UseFootSensors	not implmented for commander	
+				bool gait_changed = false;
+				if ((_command.buttons & BUT_L5) && !(_buttonsPrev & BUT_L5)) { // Select chooses different gait
+					g_InControlState.GaitType++;                    // Go to the next gait...
+					if (g_InControlState.GaitType < NumOfGaits) {                 // Make sure we did not exceed number of gaits...
+						MSound(1, 50, 2000);
+					} else {
+						MSound(2, 50, 2000, 50, 2250);
+						g_InControlState.GaitType = 0;
 					}
-					else {
-						MSound(2, 100, 2000, 50, 4000);
-						strcpy(g_InControlState.DataPack, "TA Mode OFF");
-					}
-					g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
-					g_InControlState.lWhenWeLastSetDatamode = millis();
-					/*g_InControlState.BalanceMode = !g_InControlState.BalanceMode;
-					if (g_InControlState.BalanceMode) {
-					MSound( 1, 250, 1500);
-					}
-					else {
-					MSound( 2, 100, 2000, 50, 4000);
-					}*/
+					gait_changed = true;
 				}
-#endif
-				//Toogle normal start walking and delayed walk. Look around, then walk effect.
-				if ((_command.buttons & BUT_L5) && !(_buttonsPrev & BUT_L5)) {
-
-					_delayedWalkMode = !_delayedWalkMode;
-					MSound(1, 50, 2000 + _delayedWalkMode * 250);
-					if (_delayedWalkMode) {
-						strcpy(g_InControlState.DataPack, "Delayed BUG Mode ON");
-					}
-					else{
-						strcpy(g_InControlState.DataPack, "Delayed Mode OFF");
-					}
-					g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
-					g_InControlState.lWhenWeLastSetDatamode = millis();
+				if (gait_changed) {
+					//strcpy_P(g_InControlState.DataPack, (char*)pgm_read_word(&(Gait_table[Index])));
+					SetControllerMsg(1, (const char *)Gait_table[g_InControlState.GaitType]);
+							g_InControlState.DataMode = 1;
+							g_InControlState.lWhenWeLastSetDatamode = millis();
+							MSound(1, 50, 2000);
 				}
+	
 				//Toogle dampen down speed. Might run this permanently?
-				if ((_command.buttons & BUT_L6) && !(_buttonsPrev & BUT_L6)) {
+				if ((_command.buttons & BUT_L4) && !(_buttonsPrev & BUT_L4)) {
 					g_InControlState.DampDwnSpeed = !g_InControlState.DampDwnSpeed;
 					if (g_InControlState.DampDwnSpeed) {
 						MSound(1, 250, 1500);
@@ -488,132 +418,20 @@ void CommanderInputController::ControlInput(void)
 					g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
 					g_InControlState.lWhenWeLastSetDatamode = millis();
 				}
-				
+//#endif
 
-				// Switch between Walking and Body translation using Left Top joystick button
-				if ((_command.buttons & BUT_LT) && !(_buttonsPrev & BUT_LT)) {
-
-					_LtopStickWalkMode = !_LtopStickWalkMode;
-					MSound(1, 50, 2000 + _LtopStickWalkMode * 250);
-					if (_LtopStickWalkMode) {
-						strcpy(g_InControlState.DataPack, "L_Translation Mode");
-					}
-					else{
-						strcpy(g_InControlState.DataPack, "Crawling Mode");
-					}
-					g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
-					g_InControlState.lWhenWeLastSetDatamode = millis();
-				}
-
-				if (_LtopStickWalkMode){//Body Translation 
-					g_InControlState.BodyPos.x = SmoothControl((_command.leftH) / 2, g_InControlState.BodyPos.x, SmDiv);
-					_bodyZShift = SmoothControl((_command.leftV) / 2, _bodyZShift, SmDiv);
-					_bodyYShift = SmoothControl((_command.leftT) / 2, _bodyYShift, SmDiv);
-					if (_RtopStickWalkMode) {
-						_RtopStickWalkMode = !_RtopStickWalkMode;//Force right joystick to control body rotation when doing translation on left stick
-					}
-				}
-				else{//Default Walking
-					if (_delayedWalkMode){//WIP!!! BUG BUG BUG!!
-						//Delayed walk mode, make this an option. not sure if this is the best way to do it..?
-						if ((abs(_command.leftT) < 64) && (abs(_command.leftH) < 64) && (abs(_command.leftV) < 64)){//Do bodyrotation/movement at first, then start walking
-							
-							if (abs(g_InControlState.TravelLength.y) > 1){
-								g_InControlState.TravelLength.y = ((-_command.leftT) / 3) - ((float)g_InControlState.DWrotY / 6); // Gradually increase the travellength and decrease DWrotY
-								if (g_InControlState.DWrotY > 1){
-									g_InControlState.DWrotY = g_InControlState.DWrotY - 0.5;
-								}
-								else if (g_InControlState.DWrotY < -1){
-									g_InControlState.DWrotY = g_InControlState.DWrotY + 0.5;
-								}
-
-							}
-							else if ((_command.leftT >= 0 && g_InControlState.DWrotY >= 0) || (_command.leftT <= 0 && g_InControlState.DWrotY <= 0)){//Make sure we doesn't get sudden change of direction
-								g_InControlState.DWrotY = ((float)_command.leftT * 2);//Only do body rotation at first
-							}
-							else { // Move DWrotY towards 0
-								if (g_InControlState.DWrotY > 0.5){
-									g_InControlState.DWrotY = g_InControlState.DWrotY - 0.5;
-								}
-								else if (g_InControlState.DWrotY < -0.5){
-									g_InControlState.DWrotY = g_InControlState.DWrotY + 0.5;
-								}
-								else{
-									g_InControlState.DWrotY = 0;
-								}
-							}//end TLY
-							//NOT working yet!:
-							if (abs(g_InControlState.TravelLength.x) > 1){
-								g_InControlState.TravelLength.x = ((_command.leftH) / 3) - ((float)g_InControlState.DWtransX / 6); // Gradually increase the travellength and decrease DWtransX
-								if (g_InControlState.DWtransX > 1){
-									g_InControlState.DWtransX = g_InControlState.DWtransX - 0.5;
-								}
-								else if (g_InControlState.DWtransX < -1){
-									g_InControlState.DWtransX = g_InControlState.DWtransX + 0.5;
-								}
-
-							}
-							else if ((_command.leftH >= 0 && g_InControlState.DWtransX >= 0) || (_command.leftH <= 0 && g_InControlState.DWtransX <= 0)){//Make sure we doesn't get sudden change of direction
-								g_InControlState.DWtransX = ((float)_command.leftH / 2);//Only do body translation at first
-							}
-							else { // Move DWtransX towards 0
-								if (g_InControlState.DWtransX > 0.5){
-									g_InControlState.DWtransX = g_InControlState.DWtransX - 0.5;
-								}
-								else if (g_InControlState.DWtransX < -0.5){
-									g_InControlState.DWtransX = g_InControlState.DWtransX + 0.5;
-								}
-								else{
-									g_InControlState.DWtransX = 0;
-								}
-							}//end TLX
-
-						}
-						else{
-							g_InControlState.TravelLength.x = (float)((int)_command.leftH) + ((float)g_InControlState.DWtransX / 6);
-								//g_InControlState.TravelLength.z = (float)(-(int)_command.leftV);
-								g_InControlState.TravelLength.y = ((float)(-_command.leftT) / 3) + ((float)g_InControlState.DWrotY / 6); // /2*3
-								if (g_InControlState.DWrotY > 1){
-									g_InControlState.DWrotY = g_InControlState.DWrotY - 0.2; //amount depends on gait method, might need to calc this as a factor of swing phase or stance phase
-								}
-								else if (g_InControlState.DWrotY < -1){
-									g_InControlState.DWrotY = g_InControlState.DWrotY + 0.2;
-								}
-								if (g_InControlState.DWtransX > 0.5){
-									g_InControlState.DWtransX = g_InControlState.DWtransX - 0.2;
-								}
-								else if (g_InControlState.DWtransX < -0.5){
-									g_InControlState.DWtransX = g_InControlState.DWtransX + 0.2;
-								}
-						}
-						
-						DBGSerial.print("TLX:");
-						DBGSerial.print((int)g_InControlState.TravelLength.x, DEC);
-						DBGSerial.print(" DWX:");
-						DBGSerial.println((int)g_InControlState.DWtransX, DEC);
-
-					}
-					else{//Default walking mode:
 #ifdef MXPhoenix
-						
-
-						g_InControlState.TravelLength.x = (float)((int)_command.leftH);// *5 / 7; //Left Stick Right/Left about +/- 90mm
-						g_InControlState.TravelLength.z = (float)(-(int)_command.leftV);// *5 / 7; //Left Stick Up/Down about +/- 90mm
-						g_InControlState.TravelLength.y = (float)(-_command.leftT) / 4;// / 3; //Left Stick Top Pot /5
+					g_InControlState.TravelLength.x = (float)((int)_command.leftH);// *5 / 7; //Left Stick Right/Left about +/- 90mm
+					g_InControlState.TravelLength.z = (float)(-(int)_command.leftV);// *5 / 7; //Left Stick Up/Down about +/- 90mm
+					g_InControlState.TravelLength.y = (float)(-_command.rightH) / 4;// / 3; //Left Stick Top Pot /5
 #else
-						g_InControlState.TravelLength.x = (float)((int)_command.leftH) * 5 / 7; //Left Stick Right/Left about +/- 90mm
-						g_InControlState.TravelLength.z = (float)(-(int)_command.leftV) * 5 / 7;//Left Stick Up/Down about +/- 90mm
-						g_InControlState.TravelLength.y = (float)(-_command.leftT) / 5;//Left Stick Top Pot /5
+					g_InControlState.TravelLength.x = (float)((int)_command.leftH) * 5 / 7; //Left Stick Right/Left about +/- 90mm
+					g_InControlState.TravelLength.z = (float)(-(int)_command.leftV) * 5 / 7;//Left Stick Up/Down about +/- 90mm
+					g_InControlState.TravelLength.y = (float)(-_command.rightH) / 5;//Left Stick Top Pot /5
 #endif
 						//Calculate walking time delay
-						if (_command.LowerLslider>128){
-							g_InControlState.InputTimeDelay = 128 - max(max(abs(_command.leftH), abs(_command.leftV)), abs(_command.leftT));
-						}
-						else {
-							g_InControlState.InputTimeDelay = 128-_command.LowerLslider;
-						}
-					}
-				}
+				    g_InControlState.InputTimeDelay = 128 - max(max(abs(_command.rightH), abs(_command.rightV)), abs(_command.rightH));
+
 			}
 
 
@@ -621,7 +439,7 @@ void CommanderInputController::ControlInput(void)
 #ifdef OPT_SINGLELEG      
 			if (_controlMode == SINGLELEGMODE) {
 				//Switch leg for single leg control
-				if ((_command.buttons & BUT_L6) && !(_buttonsPrev & BUT_L6) && !g_InControlState.fSLHold) {
+				if ((_command.buttons & BUT_L4) && !(_buttonsPrev & BUT_L4) && !g_InControlState.fSLHold) {
 					
 					if (g_InControlState.SelectedLeg == 5){ //Only toogle between the two front legs
 						g_InControlState.SelectedLeg = 2;//Right Leg
@@ -644,12 +462,12 @@ void CommanderInputController::ControlInput(void)
 					g_InControlState.SLLeg.y = SmoothControl((-(int)_command.leftV) * 3, g_InControlState.SLLeg.y, SmDiv); //Using left vertical for leg lifting instead, increase range even more in balancemode
 					//g_InControlState.SLLeg.x = (float)((int)_command.leftH); //NOT using X control anymore, Yawrot is better for the front legs
 					g_InControlState.SLLeg.z = SmoothControl((-(int)_command.leftH), g_InControlState.SLLeg.z, SmDiv); //Left Stick Up/Down
-					g_InControlState.SLyawRot = SmoothControl((-_command.leftT) / 4, g_InControlState.SLyawRot, SmDiv);//WIP test!!!!
+					g_InControlState.SLyawRot = SmoothControl((-_command.rightH) / 4, g_InControlState.SLyawRot, SmDiv);//WIP test!!!!
 #else
 					g_InControlState.SLLeg.y = SmoothControl((-(int)_command.leftV) * 3, g_InControlState.SLLeg.y, SmDiv); //Using left vertical for leg lifting instead, increase range even more in balancemode
 					//g_InControlState.SLLeg.x = (float)((int)_command.leftH); //NOT using X control anymore, Yawrot is better for the front legs
 					g_InControlState.SLLeg.z = SmoothControl((-(int)_command.leftH), g_InControlState.SLLeg.z, SmDiv); //Left Stick Up/Down
-					g_InControlState.SLyawRot = SmoothControl((-_command.leftT) / 4, g_InControlState.SLyawRot, SmDiv);//WIP test!!!!
+					g_InControlState.SLyawRot = SmoothControl((-_command.rightH) / 4, g_InControlState.SLyawRot, SmDiv);//WIP test!!!!
 #endif
 				}
 				// Hold single leg in place
@@ -671,8 +489,6 @@ void CommanderInputController::ControlInput(void)
 
 			}
 #endif
-
-			
 
 			//Calculate g_InControlState.BodyPos.y
 			g_InControlState.BodyPos.y = max(min(_bodyYOffset + _bodyYShift + _bodyYpos, MAX_BODY_Y), 0);//Make sure we don't get beyond the limits, should probably do more of that..
@@ -702,8 +518,9 @@ void CommanderInputController::ControlInput(void)
 
 			// Save away the buttons state as to not process the same press twice.
 			_buttonsPrev = _command.buttons;
-			_extPrev = _command.ext;
 		}
+
+    _buttonsPrev = _command.buttons;
     _ulLastMsgTime = millis();
   } 
 	else {
@@ -870,6 +687,7 @@ void Commander::begin(unsigned long baud){
   XBeeSerial.flush();
   XBeeSerial.setTimeout(20);  // give a little extra time
   if (XBeeSerial.readBytesUntil('\r', ab, 10) > 0) {
+    // Ok we entered _command mode, lets print out a few things about the XBee
     XBeeSerial.println(F("ATCN"));	          // and exit _command mode
     return;  // bail out quick
   }
@@ -887,7 +705,7 @@ void Commander::begin(unsigned long baud){
     XBeeSerial.println(F("ATCN"));	          // and exit _command mode
     return;  // It is already at 38400, so assume already init.
   }
-  // Failed, so check to see if we can communicate at 9600
+  // Failed, so check to see if we can communicate at 9600 properly configured but not quick
   XBeeSerial.end();
   XBeeSerial.begin(9600);
   while (XBeeSerial.read() != -1)
@@ -932,9 +750,6 @@ void Commander::begin(unsigned long baud){
 //==============================================================================
 // ReadMsgs
 //==============================================================================
-
-/* process messages coming from Commander 
- *  format = 0xFF RIGHT_H RIGHT_V LEFT_H LEFT_V BUTTONS EXT CHECKSUM */
 int Commander::ReadMsgs(){
   while(XBeeSerial.available() > 0){
     if(index == -1){         // looking for new packet
@@ -954,7 +769,7 @@ int Commander::ReadMsgs(){
       vals[index] = (unsigned char) XBeeSerial.read();
       checksum += (int) vals[index];
       index++;
-      if(index == 13){ // packet complete //Zenta changed from 7 to 11
+      if(index == 7){ // packet complete
         if(checksum%256 != 255){
 #ifdef DEBUG_COMMANDER
 #ifdef DBGSerial  
@@ -973,40 +788,19 @@ int Commander::ReadMsgs(){
           rightH = (signed char)( (int)vals[1]-128 );
           leftV = (signed char)( (int)vals[2]-128 );
           leftH = (signed char)( (int)vals[3]-128 );
-					rightT = (signed char)((int)vals[4] - 128);//Zenta move the new stuff to the end, from 6..
-					leftT = (signed char)((int)vals[5] - 128);
-					Rslider = (signed char)((int)vals[6]);
-					Lslider = (signed char)((int)vals[7]);
-					LowerRslider = (signed char)((int)vals[8]);
-					LowerLslider = (signed char)((int)vals[9]);
-          buttons = vals[10]; //Zenta, changed 4 to 8 
-          ext = vals[11];		// Zenta, changed 5 to 9
+          buttons = vals[4];
 #ifdef DEBUG_COMMANDER
 #ifdef DBGSerial  
           if (g_fDebugOutput) {
-						DBGSerial.print("Btn: ");
             DBGSerial.print(buttons, HEX);
+            DBGSerial.print(" : ");
+            DBGSerial.print(rightV, DEC);
             DBGSerial.print(" ");
-						DBGSerial.print("Key: ");
-						DBGSerial.print(ext, DEC);
+            DBGSerial.print(rightH, DEC);
 						DBGSerial.print(" ");
-						DBGSerial.print(rightV, DEC);//
-            DBGSerial.print(" ");
-						DBGSerial.print(rightH, DEC);//
-            DBGSerial.print(" ");
-						DBGSerial.print(leftV, DEC);//
-            DBGSerial.print(" ");
-						DBGSerial.print(leftH, DEC);//
+            DBGSerial.print(leftV, DEC);
 						DBGSerial.print(" ");
-						DBGSerial.print(rightT, DEC);//
-						DBGSerial.print(" ");
-						DBGSerial.print(leftT, DEC);//
-						DBGSerial.print(" ");
-						DBGSerial.print(leftH, DEC);//
-						DBGSerial.print(" ");
-						DBGSerial.print(Rslider, DEC);//
-						DBGSerial.print(" ");
-            DBGSerial.println(Lslider, DEC);
+            DBGSerial.println(leftH, DEC);
           }
 #endif
 #endif
@@ -1023,24 +817,15 @@ int Commander::ReadMsgs(){
 //==============================================================================
 //==============================================================================
 //Send message back to remote
-void CommanderInputController::SendMsgs(byte Voltage, byte CMD, char Data[21]){
-	//char Testtxt[21] = "Zenta Robotics test!";
-	int bChksum;
-	byte i;
-	bChksum = (int)Voltage;
-	bChksum += (int)CMD;
-	//Then add more stuff into the checksum
-	for (i = 0; i < 20; i++){
-		bChksum += (int)Data[i];
+bool CommanderInputController::SendMsgs(byte Voltage, byte CMD, char Data[21]){
+#ifdef DBGSerial
+	if (CMD) {
+		DBGSerial.printf("%u %u:%s\n", Voltage, CMD, Data);
 	}
-	bChksum = (byte)(255 - (byte)(bChksum % 256));//calc the Checksum
-	XBeeSerial.write((byte)0xff);
-	XBeeSerial.write(Voltage);
-	XBeeSerial.write(CMD);
-	for (i = 0; i < 20; i++)  {
-		XBeeSerial.write((byte)Data[i]);
-	}
-	XBeeSerial.write((byte)bChksum);
+#endif
+	// TODO, output to optional display
+	// Tell caller OK to clear out this message now.
+	return true;
 }
 /*// Compute our checksum...
   bChksum = (int)g_bButtons;
@@ -1059,5 +844,4 @@ void CommanderInputController::SendMsgs(byte Voltage, byte CMD, char Data[21]){
     //XBeeSerial.write((byte)0);        // extra, not used..
 
     XBeeSerial.write((byte)bChksum);*/
-
-#endif // USE_DIY_COMMANDER
+#endif // USE_COMMANDER

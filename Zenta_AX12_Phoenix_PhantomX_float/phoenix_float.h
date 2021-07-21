@@ -296,8 +296,10 @@ private:
 //==============================================================================
 //==============================================================================
 extern ServoDriver      g_ServoDriver;           // our global servo driver class
-extern InputController  *g_InputController;       // Our Input controller 
+//extern InputController  *g_InputController;       // Our Input controller 
 extern INCONTROLSTATE   g_InControlState;        // State information that controller changes
+
+extern bool             g_myusb_begun;           // have we begun it yet?
 
 // BUGBUG:: 
 extern float           CoxaAngle[CNT_LEGS];             //Actual Angle of the horizontal hip, decimals = 1
