@@ -47,7 +47,7 @@ enum {
 };
 
 
-#define ARBOTIX_TO  5000        // if we don't get a valid message in this number of mills turn off
+#define CONTROLLER_TO  5000        // if we don't get a valid message in this number of mills turn off
 #define cTravelDeadZone 6
 
 
@@ -699,7 +699,7 @@ void USBPSXController::ControlInput(void)
 		if (!g_WakeUpState) { //At the moment we can't turn off robot during the WakeUpState, is that a problem?
 			// We did not receive a valid packet.  check for a timeout to see if we should turn robot off...
 			if (g_InControlState.fRobotOn) {
-				if ((millis() - _ulLastMsgTime) > ARBOTIX_TO) {
+				if ((millis() - _ulLastMsgTime) > CONTROLLER_TO) {
 					controllerTurnRobotOff();
 					DBGSerial.println("Turning OFF!");//bug we should not be here straight after wakeup!
 					//For some reason I've a bug that make the robot turn off during wakeup BUG BUG
