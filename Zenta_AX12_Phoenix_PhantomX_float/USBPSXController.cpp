@@ -478,19 +478,19 @@ void USBPSXController::ControlInput(void)
 				}
 
 /// TEST BT KEYPAD
-				_keypad_button = keyboard1.getKey();
 				if ((_keypad_button >= '1') && (_keypad_button <= '4')) {
 					g_InControlState.GaitType = _keypad_button - '1';
 					gait_changed = true;
 					MSound(1, 50, 2000);
-					Serial.printf("Gait Type #: %d\n", g_InControlState.GaitType );
+					//Serial.printf("Gait Type #: %d\n", g_InControlState.GaitType );
+					_keypad_button = -1;
 				}
 				if (gait_changed) {
 					//strcpy_P(g_InControlState.DataPack, (char*)pgm_read_word(&(Gait_table[Index])));
 					strcpy(g_InControlState.DataPack, (const char *)Gait_table[g_InControlState.GaitType]);
 					g_InControlState.DataMode = 1;
 					g_InControlState.lWhenWeLastSetDatamode = millis();
-					Serial.printf("Gait Selected: %s\n", (const char *)Gait_table[g_InControlState.GaitType]) ;
+					//Serial.printf("Gait Selected: %s\n", (const char *)Gait_table[g_InControlState.GaitType]) ;
 				}
 
 				// Was 7 on Zentas....
@@ -499,17 +499,18 @@ void USBPSXController::ControlInput(void)
 						SmDiv = 1;
 						MSound(1, 50, 1000);
 						strcpy(g_InControlState.DataPack, "Raw and fast control");
-						Serial.printf("Gait Control: Raw and fast control\n");
+						//Serial.printf("Gait Control: Raw and fast control\n");			
 					} else {
 						SmDiv *= 3;
 						SmDiv += 7;
 						MSound(1, 50, 1500 + SmDiv * 20);
 						strcpy(g_InControlState.DataPack, "Smooth control");
 						if (SmDiv > 20) strcpy(g_InControlState.DataPack, "Super Smooth ctrl!");
-						Serial.printf("Gait Control: Smooth control\n");
+						//Serial.printf("Gait Control: Smooth control\n");
 					}
 					g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
 					g_InControlState.lWhenWeLastSetDatamode = millis();
+					_keypad_button = -1;
 				}
 				// Was A-D on zentas...
 				if ((_keypad_button >= '5') && (_keypad_button <= '8')) {
@@ -519,22 +520,24 @@ void USBPSXController::ControlInput(void)
 					MSound(1, 50, 2000);
 					g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
 					g_InControlState.lWhenWeLastSetDatamode = millis();
+					_keypad_button = -1;
 				}
 				if (_keypad_button == '#') {
 					if (g_InControlState.BodyRotOffset.y == 0) {
 						g_InControlState.BodyRotOffset.y = 200;
 						strcpy(g_InControlState.DataPack, "YRotation offset =20");
-						Serial.printf("YRotation offset =20\n");
+						//Serial.printf("YRotation offset =20\n");
 					}
 					else {
 						g_InControlState.BodyRotOffset.y = 0;
 						strcpy(g_InControlState.DataPack, "YRotation offset = 0");
-						Serial.printf("YRotation offset = 0\n");
+						//Serial.printf("YRotation offset = 0\n");
 
 					}
 					g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
 					g_InControlState.lWhenWeLastSetDatamode = millis();
 					MSound(1, 50, 2000);
+					_keypad_button = -1;
 				}
 
 /////END TEST BT KEYPAD
@@ -856,11 +859,9 @@ void USBPSXController::UpdateActiveDeviceInfo() {
 
 void USBPSXController::process_OnPress(int key)
 {
-  Serial.print("key based on getKey ");
-  //Serial.println((char)keyboard1.getKey());
-
+  //Serial.print("key based on getKey ");
    _keypad_button = keyboard1.getKey();
-   Serial.println( (char) _keypad_button);	
+  //Serial.println( (char) _keypad_button);	
 }
 
 void USBPSXController::OnPress(int key)
