@@ -156,6 +156,7 @@ void USBPSXController::Init(void)
 
 	if (!g_myusb_begun) {
 		myusb.begin();
+		keyboard1.attachPress(OnPress);
 		g_myusb_begun = true;		
 	}
 
@@ -535,9 +536,6 @@ void USBPSXController::ControlInput(void)
 
 /////END TEST BT KEYPAD
 
-
-
-
 	
 				// Switch between Walk method 1 && Walk method 2
 				if (ButtonPressed(BUT_CIRC)) { // Change walking mode
@@ -852,6 +850,16 @@ void USBPSXController::UpdateActiveDeviceInfo() {
 	}
 #endif
 }
+
+void USBPSXController::OnPress(int key)
+{
+  Serial.print("key based on getKey ");
+  //Serial.println((char)keyboard1.getKey());
+
+   _keypad_button = keyboard1.getKey();
+   Serial.println( (char) _keypad_button);
+}
+
 
 //================================================================================
 #ifdef OPT_TERMINAL_MONITOR_IC
