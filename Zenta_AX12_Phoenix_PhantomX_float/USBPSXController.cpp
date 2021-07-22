@@ -54,6 +54,7 @@ enum {
 //=============================================================================
 // Global - Local to this file only...
 //=============================================================================
+USBPSXController *g_active_controller = nullptr;
 USBHost myusb;
 USBHub hub1(myusb);
 USBHub hub2(myusb);
@@ -154,11 +155,13 @@ void USBPSXController::Init(void)
 	DBGSerial.println("USB Joystick Init: ");
 #endif
 
+	g_active_controller = this;
 	if (!g_myusb_begun) {
 		myusb.begin();
-		keyboard1.attachPress(OnPress);
 		g_myusb_begun = true;		
 	}
+	// Do regardless if other code like servo controller beat us to initialize the USB object
+	keyboard1.attachPress(OnPress);
 
 	GPSeq = 0;  // init to something...
 
@@ -851,13 +854,19 @@ void USBPSXController::UpdateActiveDeviceInfo() {
 #endif
 }
 
-void USBPSXController::OnPress(int key)
+void USBPSXController::process_OnPress(int key)
 {
   Serial.print("key based on getKey ");
   //Serial.println((char)keyboard1.getKey());
 
    _keypad_button = keyboard1.getKey();
-   Serial.println( (char) _keypad_button);
+   Serial.println( (char) _keypad_button);	
+}
+
+void USBPSXController::OnPress(int key)
+{
+	// BUGBUG hard coded name.
+	if (g_active_controller) g_active_controller->process_OnPress(key);
 }
 
 
