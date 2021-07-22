@@ -96,7 +96,8 @@ class USBPSXController : public InputController
 
 		void controllerTurnRobotOff();
 		void UpdateActiveDeviceInfo();
-		void OnPress(int key);
+		static void OnPress(int key);
+		void process_OnPress(int key);
 		inline bool ButtonPressed(uint8_t button_index) {return ((_buttons & BTN_MASKS[button_index]) && !(_buttons_prev & BTN_MASKS[button_index]));}
 		inline bool ButtonDown(uint8_t button_index) {return (_buttons & BTN_MASKS[button_index]);}
 		#ifdef _SPARKFUN_QWIIC_KEYPAD_ARDUINO_LIBRARY_H
