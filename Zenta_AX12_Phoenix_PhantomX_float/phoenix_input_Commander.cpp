@@ -218,19 +218,18 @@ void CommanderInputController::ControlInput(void)
 {
 	// See if we have a new _command available...
 	if (_command.ReadMsgs() > 0){
-    // If we receive a valid message than turn robot on...
-    boolean fAdjustLegPositions = false;
-    short sLegInitXZAdjust = 0;
-    short sLegInitAngleAdjust = 0;
+		// If we receive a valid message than turn robot on...
+		boolean fAdjustLegPositions = false;
+		short sLegInitXZAdjust = 0;
+		short sLegInitAngleAdjust = 0;
 		
-    if (!g_InControlState.fRobotOn ) {
-      g_InControlState.fRobotOn = true;
-      fAdjustLegPositions = true;
+		if (!g_InControlState.fRobotOn ) {
+			g_InControlState.fRobotOn = true;
+			fAdjustLegPositions = true;
 			g_WakeUpState = true;//Start the wakeup routine
-			
 			//delay(10000);//Testing a bug that occour after powerup. Robot turns on and of and then on again. After programming first time it work fine. Then bug start after powerup
 			g_InControlState.ForceSlowCycleWait = 2;//Do this action slowly..
-    }
+		}
 
 		if (!g_WakeUpState) {//Don't take care of controller inputs until the WakeUpState is over (false)
 			// [SWITCH MODES]
@@ -256,72 +255,71 @@ void CommanderInputController::ControlInput(void)
 				g_InControlState.lWhenWeLastSetDatamode = millis();
 			}
 
-
 			//Stand up, sit down 
     		if ((_command.buttons & BUT_R1) && !(_buttonsPrev & BUT_R1)) {
-					if (_bodyYOffset > 0) {
-						_bodyYOffset = 0;
-						g_InhibitMovement = true;//Do not allow body movement and walking
-						strcpy(g_InControlState.DataPack, "Resting position");
-					}
-					else {
-						//in other this is set to 32
-						_bodyYOffset = 80;//Zenta a little higher for avoiding the out of range issue on a symmetric MKI PhanomX
-						g_InhibitMovement = false; //Allow body movement and walking
-						strcpy(g_InControlState.DataPack, "Ready for action!");
-					}
-					g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
-					g_InControlState.lWhenWeLastSetDatamode = millis();
-					g_InControlState.ForceSlowCycleWait = 2;//Do this action slowly..
-
-					fAdjustLegPositions = false;//Zenta setting this to false removes a bug
-					_fDynamicLegXZLength = false;
+				if (_bodyYOffset > 0) {
+					_bodyYOffset = 0;
+					g_InhibitMovement = true;//Do not allow body movement and walking
+					strcpy(g_InControlState.DataPack, "Resting position");
 				}
+				else {
+					//in other this is set to 32
+					_bodyYOffset = 80;//Zenta a little higher for avoiding the out of range issue on a symmetric MKI PhanomX
+					g_InhibitMovement = false; //Allow body movement and walking
+					strcpy(g_InControlState.DataPack, "Ready for action!");
+				}
+				g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
+				g_InControlState.lWhenWeLastSetDatamode = millis();
+				g_InControlState.ForceSlowCycleWait = 2;//Do this action slowly..
 
-	    // We will use L6 with the Right joystick to control both body offset as well as Speed...
-	    // We move each pass through this by a percentage of how far we are from center in each direction
-	    // We get feedback with height by seeing the robot move up and down.  For Speed, I put in sounds
-	    // which give an idea, but only for those whoes robot has a speaker
-	    //int lx = _command.leftH;  just a note to self
-	    //int ly = _command.leftV;
+				fAdjustLegPositions = false;//Zenta setting this to false removes a bug
+				_fDynamicLegXZLength = false;
+			}
 
-    	if (_command.buttons & BUT_L6 ) {
-	      // raise or lower the robot on the joystick up /down
-	      // Maybe should have Min/Max
-	      int delta = _command.rightV/25;   
-	      if (delta) {
-	        _bodyYOffset = max(min(_bodyYOffset + delta, MAX_BODY_Y), 0);
-	        fAdjustLegPositions = true;
-	      }
+			// We will use L6 with the Right joystick to control both body offset as well as Speed...
+			// We move each pass through this by a percentage of how far we are from center in each direction
+			// We get feedback with height by seeing the robot move up and down.  For Speed, I put in sounds
+			// which give an idea, but only for those whoes robot has a speaker
+			//int lx = _command.leftH;  just a note to self
+			//int ly = _command.leftV;
 
-	      // Also use right Horizontal to manually adjust the initial leg positions.
-	      sLegInitXZAdjust = _command.leftH/10;        // play with this.
-	      sLegInitAngleAdjust = _command.leftV/8;
+			if (_command.buttons & BUT_L6 ) {
+			  // raise or lower the robot on the joystick up /down
+			  // Maybe should have Min/Max
+			  int delta = _command.rightV/25;   
+			  if (delta) {
+				_bodyYOffset = max(min(_bodyYOffset + delta, MAX_BODY_Y), 0);
+				fAdjustLegPositions = true;
+			  }
 
-	      // Likewise for Speed control
-	      delta = _command.rightH / 16;   // 
-	      if ((delta < 0) && g_InControlState.SpeedControl) {
-	        if ((word)(-delta) <  g_InControlState.SpeedControl)
-	          g_InControlState.SpeedControl += delta;
-	        else 
-	          g_InControlState.SpeedControl = 0;
-	        MSound( 1, 50, 1000+g_InControlState.SpeedControl);  
-	      }
-	      if ((delta > 0) && (g_InControlState.SpeedControl < 2000)) {
-	        g_InControlState.SpeedControl += delta;
-	        if (g_InControlState.SpeedControl > 2000)
-	          g_InControlState.SpeedControl = 2000;
-	        MSound( 1, 50, 1000+g_InControlState.SpeedControl); 
+			  // Also use right Horizontal to manually adjust the initial leg positions.
+			  sLegInitXZAdjust = _command.leftH/10;        // play with this.
+			  sLegInitAngleAdjust = _command.leftV/8;
+
+			  // Likewise for Speed control
+			  delta = _command.rightH / 16;   // 
+			  if ((delta < 0) && g_InControlState.SpeedControl) {
+				if ((word)(-delta) <  g_InControlState.SpeedControl)
+				  g_InControlState.SpeedControl += delta;
+				else 
+				  g_InControlState.SpeedControl = 0;
+				MSound( 1, 50, 1000+g_InControlState.SpeedControl);  
+			  }
+			  if ((delta > 0) && (g_InControlState.SpeedControl < 2000)) {
+				g_InControlState.SpeedControl += delta;
+				if (g_InControlState.SpeedControl > 2000)
+				  g_InControlState.SpeedControl = 2000;
+				MSound( 1, 50, 1000+g_InControlState.SpeedControl); 
+				}
+				
+			  _command.rightH = 0; // don't walk when adjusting the speed here...
 			}
 			
-	      _command.rightH = 0; // don't walk when adjusting the speed here...
-		}
-			
 #ifdef DBGSerial
-	    if ((_command.buttons & BUT_R3) && !(_buttonsPrev & BUT_R3)) {
-	      MSound(1, 50, 2000);
-	      g_fDebugOutput = !g_fDebugOutput;
-	    }
+			if ((_command.buttons & BUT_R3) && !(_buttonsPrev & BUT_R3)) {
+			  MSound(1, 50, 2000);
+			  g_fDebugOutput = !g_fDebugOutput;
+			}
 #endif    
 
 
@@ -332,9 +330,6 @@ void CommanderInputController::ControlInput(void)
 			if (_controlMode == WALKMODE){
 #endif
 				//Deleted Keypad stuff for now may put back in later
-
-				//Switch between absolute and relative body translation and rotation. Using R1
-				//  INFO::Only absolute mode used for now
 
 				//Switch between two balance methods
 				if ((_command.buttons & BUT_R2) && !(_buttonsPrev & BUT_R2)) {
@@ -355,7 +350,6 @@ void CommanderInputController::ControlInput(void)
 
 				// Switch between rotation and Body translation using Right Top joystick button
 				if ((_command.buttons & BUT_RT) && !(_buttonsPrev & BUT_RT)) {
-
 					_RtopStickWalkMode = !_RtopStickWalkMode;
 					MSound(1, 50, 2000 + _RtopStickWalkMode * 250);
 					if (_RtopStickWalkMode) {
@@ -375,18 +369,20 @@ void CommanderInputController::ControlInput(void)
 					_bodyYShift = SmoothControl(((_command.rightV) * 2), _bodyYShift, SmDiv);
 				}
 				else{//Default body rotation
-					g_InControlState.BodyRot1.x = SmoothControl((_command.leftV) * 2, g_InControlState.BodyRot1.x, SmDiv);//g_InControlState.BodyRot1.x = (_command.rightV) * 2;//Zenta *2
-					g_InControlState.BodyRot1.y = SmoothControl((_command.rightH) * 3, g_InControlState.BodyRot1.y, SmDiv);//g_InControlState.BodyRot1.y = (_command.rightT) * 2;
-					g_InControlState.BodyRot1.z = SmoothControl((-_command.rightV) * 2, g_InControlState.BodyRot1.z, SmDiv);//g_InControlState.BodyRot1.z = (-_command.rightH) * 2;//Zenta, *2
+					g_InControlState.BodyRot1.x = SmoothControl((_command.rightV) * 2, g_InControlState.BodyRot1.x, SmDiv);//g_InControlState.BodyRot1.x = (_command.rightV) * 2;//Zenta *2
+					g_InControlState.BodyRot1.y = SmoothControl((_command.leftV) * 3, g_InControlState.BodyRot1.y, SmDiv);//g_InControlState.BodyRot1.y = (_command.rightT) * 2;
+					g_InControlState.BodyRot1.z = SmoothControl((-_command.rightH) * 2, g_InControlState.BodyRot1.z, SmDiv);//g_InControlState.BodyRot1.z = (-_command.rightH) * 2;//Zenta, *2
 				}
 
 			} //Common functions end
 
 			//[Walk functions]
 			if (_controlMode == WALKMODE) {
-//#ifdef UseFootSensors	not implmented for commander	
+//#ifdef UseFootSensors	not implmented for commander
+	
 				bool gait_changed = false;
-				if ((_command.buttons & BUT_L5) && !(_buttonsPrev & BUT_L5)) { // Select chooses different gait
+				if ((_command.buttons & BUT_L5) && !(_buttonsPrev & BUT_L5)) 
+				{ // Select chooses different gait
 					g_InControlState.GaitType++;                    // Go to the next gait...
 					if (g_InControlState.GaitType < NumOfGaits) {                 // Make sure we did not exceed number of gaits...
 						MSound(1, 50, 2000);
@@ -418,8 +414,33 @@ void CommanderInputController::ControlInput(void)
 					g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
 					g_InControlState.lWhenWeLastSetDatamode = millis();
 				}
-//#endif
 
+
+				// Switch between Walking and Body translation using Left Top joystick button
+				if ((_command.buttons & BUT_LT) && !(_buttonsPrev & BUT_LT)) {
+
+					_LtopStickWalkMode = !_LtopStickWalkMode;
+					MSound(1, 50, 2000 + _LtopStickWalkMode * 250);
+					if (_LtopStickWalkMode) {
+						strcpy(g_InControlState.DataPack, "L_Translation Mode");
+					}
+					else{
+						strcpy(g_InControlState.DataPack, "Crawling Mode");
+					}
+					g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
+					g_InControlState.lWhenWeLastSetDatamode = millis();
+				}
+				
+				
+				if (_LtopStickWalkMode){//Body Translation 
+					g_InControlState.BodyPos.x = SmoothControl((_command.leftH) / 2, g_InControlState.BodyPos.x, SmDiv);
+					_bodyZShift = SmoothControl((_command.leftV) / 2, _bodyZShift, SmDiv);
+					_bodyYShift = SmoothControl((_command.rightV) / 2, _bodyYShift, SmDiv);
+					if (_RtopStickWalkMode) {
+						_RtopStickWalkMode = !_RtopStickWalkMode;//Force right joystick to control body rotation when doing translation on left stick
+					}
+				} 
+				else{//Default Walking
 #ifdef MXPhoenix
 					g_InControlState.TravelLength.x = (float)((int)_command.leftH);// *5 / 7; //Left Stick Right/Left about +/- 90mm
 					g_InControlState.TravelLength.z = (float)(-(int)_command.leftV);// *5 / 7; //Left Stick Up/Down about +/- 90mm
@@ -431,7 +452,7 @@ void CommanderInputController::ControlInput(void)
 #endif
 						//Calculate walking time delay
 				    g_InControlState.InputTimeDelay = 128 - max(max(abs(_command.rightH), abs(_command.rightV)), abs(_command.rightH));
-
+				}
 			}
 
 
