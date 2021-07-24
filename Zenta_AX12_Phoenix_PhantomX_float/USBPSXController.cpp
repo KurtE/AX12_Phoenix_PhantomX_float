@@ -54,6 +54,7 @@ enum {
 //=============================================================================
 // Global - Local to this file only...
 //=============================================================================
+USBPSXController *g_active_controller = nullptr;
 USBHost myusb;
 USBHub hub1(myusb);
 USBHub hub2(myusb);
@@ -61,25 +62,27 @@ USBHIDParser hid1(myusb);
 USBHIDParser hid2(myusb);
 USBHIDParser hid3(myusb);
 JoystickController joystick1(myusb);
+KeyboardController keyboard1(myusb);
+
 #if defined(BLUETOOTH)
 	//BluetoothController bluet(myusb, true, "0000");   // Version does pairing to device
 	BluetoothController bluet(myusb);   // version assumes it already was paired
 
-  USBDriver* drivers[] = { &hub1, &hub2, &joystick1, &bluet, &hid1, &hid2, &hid3 };
+  USBDriver* drivers[] = { &hub1, &hub2, &joystick1, &keyboard1, &bluet, &hid1, &hid2, &hid3 };
   
   #define CNT_DEVICES (sizeof(drivers)/sizeof(drivers[0]))
-  const char* driver_names[CNT_DEVICES] = { "Hub1", "Hub2", "JOY1D", "Bluet", "HID1" , "HID2", "HID3" };
+  const char* driver_names[CNT_DEVICES] = { "Hub1", "Hub2", "JOY1D", "KB1", "Bluet", "HID1" , "HID2", "HID3" };
   
-  bool driver_active[CNT_DEVICES] = { false, false, false, false };
+  bool driver_active[CNT_DEVICES] = { false, false, false, false, false };
 #else
   BluetoothController bluet(myusb);   // version assumes it already was paired
 
-  USBDriver* drivers[] = { &hub1, &hub2, &joystick1, &hid1, &hid2, &hid3 };
+  USBDriver* drivers[] = { &hub1, &hub2, &joystick1, &keyboard1, &hid1, &hid2, &hid3 };
   
   #define CNT_DEVICES (sizeof(drivers)/sizeof(drivers[0]))
-  const char* driver_names[CNT_DEVICES] = { "Hub1", "Hub2", "JOY1D", "HID1" , "HID2", "HID3" };
+  const char* driver_names[CNT_DEVICES] = { "Hub1", "Hub2", "JOY1D", "KB1", "HID1" , "HID2", "HID3" };
   
-  bool driver_active[CNT_DEVICES] = { false, false, false };
+  bool driver_active[CNT_DEVICES] = { false, false, false, false };
 #endif
 
 // Lets also look at HID Input devices
@@ -92,7 +95,7 @@ bool hid_driver_active[CNT_DEVICES] = { false };
 #if defined(BLUETOOTH)
 	BTHIDInput* bthiddrivers[] = { &joystick1 };
 	#define CNT_BTHIDDEVICES (sizeof(bthiddrivers)/sizeof(bthiddrivers[0]))
-	const char* bthid_driver_names[CNT_HIDDEVICES] = { "joystick" };
+	const char* bthid_driver_names[CNT_HIDDEVICES] = { "joystick"};
 	bool bthid_driver_active[CNT_HIDDEVICES] = { false };
 #endif
 
@@ -152,10 +155,14 @@ void USBPSXController::Init(void)
 	DBGSerial.println("USB Joystick Init: ");
 #endif
 
+	g_active_controller = this;
+
 	if (!g_myusb_begun) {
 		myusb.begin();
 		g_myusb_begun = true;		
 	}
+	// Do regardless if other code like servo controller beat us to initialize the USB object
+	keyboard1.attachPress(OnPress);
 
 	GPSeq = 0;  // init to something...
 
@@ -255,6 +262,7 @@ void USBPSXController::ControlInput(void)
 			                 lx, ly, rx, ry, joystick1.getAxis(AXIS_LT), joystick1.getAxis(AXIS_RT));
 		}
 #endif
+
 
 #if defined(BLUETOOTH)
 		if (ButtonPressed(BUT_PS3)) {
@@ -469,6 +477,72 @@ void USBPSXController::ControlInput(void)
 					SetControllerMsg(1, (const char *)Gait_table[g_InControlState.GaitType]);
 					//Serial.println((const char *)Gait_table[g_InControlState.GaitType]);
 				}
+
+/// TEST BT KEYPAD
+				if ((_keypad_button >= '1') && (_keypad_button <= '4')) {
+					g_InControlState.GaitType = _keypad_button - '1';
+					gait_changed = true;
+					MSound(1, 50, 2000);
+					//Serial.printf("Gait Type #: %d\n", g_InControlState.GaitType );
+					_keypad_button = -1;
+				}
+				if (gait_changed) {
+					//strcpy_P(g_InControlState.DataPack, (char*)pgm_read_word(&(Gait_table[Index])));
+					strcpy(g_InControlState.DataPack, (const char *)Gait_table[g_InControlState.GaitType]);
+					g_InControlState.DataMode = 1;
+					g_InControlState.lWhenWeLastSetDatamode = millis();
+					//Serial.printf("Gait Selected: %s\n", (const char *)Gait_table[g_InControlState.GaitType]) ;
+				}
+
+				// Was 7 on Zentas....
+				if (_keypad_button == '0') {
+					if (SmDiv > 20) {
+						SmDiv = 1;
+						MSound(1, 50, 1000);
+						strcpy(g_InControlState.DataPack, "Raw and fast control");
+						//Serial.printf("Gait Control: Raw and fast control\n");			
+					} else {
+						SmDiv *= 3;
+						SmDiv += 7;
+						MSound(1, 50, 1500 + SmDiv * 20);
+						strcpy(g_InControlState.DataPack, "Smooth control");
+						if (SmDiv > 20) strcpy(g_InControlState.DataPack, "Super Smooth ctrl!");
+						//Serial.printf("Gait Control: Smooth control\n");
+					}
+					g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
+					g_InControlState.lWhenWeLastSetDatamode = millis();
+					_keypad_button = -1;
+				}
+				// Was A-D on zentas...
+				if ((_keypad_button >= '5') && (_keypad_button <= '8')) {
+					int8_t Index = _keypad_button - '5';
+					g_InControlState.LegLiftHeight = pgm_read_word(&cLegLiftHeight[Index]);//Key A = MaxLegLiftHeight
+					strcpy(g_InControlState.DataPack, (char*)LegH_table[Index]);
+					MSound(1, 50, 2000);
+					g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
+					g_InControlState.lWhenWeLastSetDatamode = millis();
+					_keypad_button = -1;
+				}
+				if (_keypad_button == '#') {
+					if (g_InControlState.BodyRotOffset.y == 0) {
+						g_InControlState.BodyRotOffset.y = 200;
+						strcpy(g_InControlState.DataPack, "YRotation offset =20");
+						//Serial.printf("YRotation offset =20\n");
+					}
+					else {
+						g_InControlState.BodyRotOffset.y = 0;
+						strcpy(g_InControlState.DataPack, "YRotation offset = 0");
+						//Serial.printf("YRotation offset = 0\n");
+
+					}
+					g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
+					g_InControlState.lWhenWeLastSetDatamode = millis();
+					MSound(1, 50, 2000);
+					_keypad_button = -1;
+				}
+
+/////END TEST BT KEYPAD
+
 	
 				// Switch between Walk method 1 && Walk method 2
 				if (ButtonPressed(BUT_CIRC)) { // Change walking mode
@@ -665,6 +739,7 @@ void USBPSXController::controllerTurnRobotOff(void)
 
 	_fDynamicLegXZLength = false; // also make sure the robot is back in normal leg init mode...
 }
+
 //=============================================================================
 // UpdateActiveDeviceInfo
 //=============================================================================
@@ -781,6 +856,19 @@ void USBPSXController::UpdateActiveDeviceInfo() {
 		}
 	}
 #endif
+}
+
+void USBPSXController::process_OnPress(int key)
+{
+  //Serial.print("key based on getKey ");
+   _keypad_button = keyboard1.getKey();
+  //Serial.println( (char) _keypad_button);	
+}
+
+void USBPSXController::OnPress(int key)
+{
+	// BUGBUG hard coded name.
+	if (g_active_controller) g_active_controller->process_OnPress(key);
 }
 
 

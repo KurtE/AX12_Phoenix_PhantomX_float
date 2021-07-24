@@ -29,8 +29,8 @@
 //  If this is not defined, The included Controller should simply implement the InputController Class...
 //==================================================================================================================================
 #define USE_USB_JOYSTICK
-//#define BLUETOOTH   // Enable the Bluetooth code in the USB joystick.
-
+#define USE_BT_KEYPAD
+#define BLUETOOTH   // Enable the Bluetooth code in the USB joystick.
 //#define USE_COMMANDER  // Use the XBee Commander code.
 //#define_USE_DIY_COMMANDER 
 
@@ -98,6 +98,7 @@
 //#if defined(__MK20DX256__)
 #if defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__) || defined(__IMXRT1062__)
 #define DBGSerial         Serial
+
 #elif defined(UBRR2H)
 #define DBGSerial         Serial
 #else

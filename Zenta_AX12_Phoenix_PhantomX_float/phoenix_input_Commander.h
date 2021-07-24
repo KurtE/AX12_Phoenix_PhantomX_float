@@ -24,9 +24,8 @@
 //
 //=============================================================================
 //==============================================================================
-#ifndef _phoenix_input_DIY_Commander_h_
-#define _phoenix_input_DIY_Commander_h_
-
+#ifndef _phoenix_input_Commander_h_
+#define _phoenix_input_Commander_h_
 
 #include "phoenix_float.h"
 

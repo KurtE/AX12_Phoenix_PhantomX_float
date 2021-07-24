@@ -81,7 +81,7 @@ class USBPSXController : public InputController
 		byte        GPSeq;             //Number of the sequence
 		byte		SmDiv;  //"Smooth division" factor for the smooth control function, Make this a variable??
 
-		uint8_t	_keypad_button = -1;		
+		uint8_t	_keypad_button = -1;
 		int 	_user_axis[64];
 		uint32_t _buttons_prev = 0;
 		uint32_t _buttons;
@@ -96,12 +96,16 @@ class USBPSXController : public InputController
 
 		void controllerTurnRobotOff();
 		void UpdateActiveDeviceInfo();
+		static void OnPress(int key);
+		void process_OnPress(int key);
 		inline bool ButtonPressed(uint8_t button_index) {return ((_buttons & BTN_MASKS[button_index]) && !(_buttons_prev & BTN_MASKS[button_index]));}
 		inline bool ButtonDown(uint8_t button_index) {return (_buttons & BTN_MASKS[button_index]);}
+
 		#ifdef _SPARKFUN_QWIIC_KEYPAD_ARDUINO_LIBRARY_H
 		bool _haveKeypad = false;
 		KEYPAD _keypad; //Create instance of this object
 		#endif
+
 };
    
 #endif
