@@ -156,7 +156,6 @@ void USBPSXController::Init(void)
 #endif
 
 	g_active_controller = this;
-
 	if (!g_myusb_begun) {
 		myusb.begin();
 		g_myusb_begun = true;		

@@ -1061,4 +1061,3 @@ void CommanderInputController::SendMsgs(byte Voltage, byte CMD, char Data[21]){
     XBeeSerial.write((byte)bChksum);*/
 
 #endif // USE_DIY_COMMANDER
-
