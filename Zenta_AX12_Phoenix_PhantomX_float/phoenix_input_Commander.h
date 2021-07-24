@@ -27,7 +27,6 @@
 #ifndef _phoenix_input_Commander_h_
 #define _phoenix_input_Commander_h_
 
-
 #include "phoenix_float.h"
 
 class CommanderInputController : public InputController

@@ -92,6 +92,7 @@ And how the buttons are placed on the 3Dprinted remote */
 
 //bugbug: todo this needs to be deleted when finished updating
 /*Keypad definitions (ASCII values)*/
+
 //#define CKEY_0				48	//For key 1,2,3.. just add 
 //#define	CKEY_A				65	//For key B,C,D.. just add
 //#define CKEY_Asterix	42	//* key NOT used to control robot, programming mode for the controller
@@ -235,6 +236,7 @@ void CommanderInputController::ControlInput(void)
 			// [SWITCH MODES]
 			// Cycle through modes...
 			if ((_command.buttons & BUT_R3) && !(_buttonsPrev & BUT_R3)) {
+
 				if (++_controlMode >= MODECNT) {
 					_controlMode = WALKMODE;    // cycled back around...
 					MSound(2, 50, 2000, 50, 3000);
@@ -330,7 +332,6 @@ void CommanderInputController::ControlInput(void)
 			if (_controlMode == WALKMODE){
 #endif
 				//Deleted Keypad stuff for now may put back in later
-
 				//Switch between two balance methods
 				if ((_command.buttons & BUT_R2) && !(_buttonsPrev & BUT_R2)) {
 					g_InControlState.BalanceMode++;
@@ -346,7 +347,6 @@ void CommanderInputController::ControlInput(void)
 					g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
 					g_InControlState.lWhenWeLastSetDatamode = millis();
 				}
-
 
 				// Switch between rotation and Body translation using Right Top joystick button
 				if ((_command.buttons & BUT_RT) && !(_buttonsPrev & BUT_RT)) {
@@ -378,9 +378,9 @@ void CommanderInputController::ControlInput(void)
 
 			//[Walk functions]
 			if (_controlMode == WALKMODE) {
-//#ifdef UseFootSensors	not implmented for commander
-	
-				bool gait_changed = false;
+      //#ifdef UseFootSensors	not implmented for commander
+        
+					bool gait_changed = false;
 				if ((_command.buttons & BUT_L5) && !(_buttonsPrev & BUT_L5)) 
 				{ // Select chooses different gait
 					g_InControlState.GaitType++;                    // Go to the next gait...
@@ -415,8 +415,7 @@ void CommanderInputController::ControlInput(void)
 					g_InControlState.lWhenWeLastSetDatamode = millis();
 				}
 
-
-				// Switch between Walking and Body translation using Left Top joystick button
+        // Switch between Walking and Body translation using Left Top joystick button
 				if ((_command.buttons & BUT_LT) && !(_buttonsPrev & BUT_LT)) {
 
 					_LtopStickWalkMode = !_LtopStickWalkMode;
@@ -430,8 +429,7 @@ void CommanderInputController::ControlInput(void)
 					g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
 					g_InControlState.lWhenWeLastSetDatamode = millis();
 				}
-				
-				
+
 				if (_LtopStickWalkMode){//Body Translation 
 					g_InControlState.BodyPos.x = SmoothControl((_command.leftH) / 2, g_InControlState.BodyPos.x, SmDiv);
 					_bodyZShift = SmoothControl((_command.leftV) / 2, _bodyZShift, SmDiv);
@@ -459,9 +457,9 @@ void CommanderInputController::ControlInput(void)
 			//[Single leg functions]
 #ifdef OPT_SINGLELEG      
 			if (_controlMode == SINGLELEGMODE) {
+        
 				//Switch leg for single leg control
-				if ((_command.buttons & BUT_L4) && !(_buttonsPrev & BUT_L4) && !g_InControlState.fSLHold) {
-					
+				if ((_command.buttons & BUT_L4) && !(_buttonsPrev & BUT_L4) && !g_InControlState.fSLHold) {		
 					if (g_InControlState.SelectedLeg == 5){ //Only toogle between the two front legs
 						g_InControlState.SelectedLeg = 2;//Right Leg
 						strcpy(g_InControlState.DataPack, "Right Single Leg");
@@ -539,8 +537,6 @@ void CommanderInputController::ControlInput(void)
 
 			// Save away the buttons state as to not process the same press twice.
 			_buttonsPrev = _command.buttons;
-		}
-
     _buttonsPrev = _command.buttons;
     _ulLastMsgTime = millis();
   } 
