@@ -31,6 +31,7 @@
 #define USE_USB_JOYSTICK
 #define USE_BT_KEYPAD
 #define BLUETOOTH   // Enable the Bluetooth code in the USB joystick.
+
 //#define USE_COMMANDER  // Use the XBee Commander code.
 //#define_USE_DIY_COMMANDER 
 
