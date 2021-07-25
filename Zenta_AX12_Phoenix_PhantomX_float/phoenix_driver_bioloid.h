@@ -87,8 +87,8 @@ private:
   void MakeSureServosAreOn(void);
   void TCSetServoID(byte *psz);
   void TCTrackServos();
-  void SetRegOnAllServos(uint8_t bReg, int32_t bVal);
-  void SetRegOnAllServos2(uint8_t bReg, int32_t wVal) {SetRegOnAllServos(bReg, wVal);}
+  void SetRegOnAllServos(uint8_t bReg, int32_t bVal, bool checkStatusErrors=false);
+  void SetRegOnAllServos2(uint8_t bReg, int32_t wVal, bool checkStatusErrors=false) {SetRegOnAllServos(bReg, wVal, checkStatusErrors);}
 
  boolean _fServosFree;    // Are the servos in a free state?
   boolean   _fAXSpeedControl;      // flag to know which way we are doing output...

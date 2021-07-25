@@ -153,7 +153,9 @@ void printMemoryUsage() {}
 //Init
 //--------------------------------------------------------------------
 void DynamixelServoDriver::Init(void) {
-  Serial.println("At start of DynamixelServoDriver::Init");
+#ifdef DBGSerial
+  DBGSerial.println("At start of DynamixelServoDriver::Init");
+#endif
   printMemoryUsage();
   // First lets get the actual servo positions for all of our servos...
   //  pinMode(0, OUTPUT);
@@ -196,9 +198,10 @@ void DynamixelServoDriver::Init(void) {
   dxl.setPortProtocolVersion((DYNAMIXEL_PROTOCOL == 2) ? 2.0 : 1.0);
   bioloid.begin();
 #endif
-  Serial.println("After dxl/bioloid begin");
+#ifdef DBGSerial
+  DBGSerial.println("After dxl/bioloid begin");
   printMemoryUsage();
-
+#endif
   _fServosFree = true;
   bioloid.poseSize = NUMSERVOS;
 #ifdef OPT_CHECK_SERVO_RESET
@@ -208,12 +211,13 @@ void DynamixelServoDriver::Init(void) {
   int     missing_servo = -1;
   bool    servo_1_in_table = false;
 
+#ifdef DBGSerial
   f = dxl.getPresentPosition(2);
-  Serial.print("Get position 2: "); Serial.flush();
-  Serial.print(f, 3);
-  Serial.println("After first getPresentPosition call");
+  DBGSerial.print("Get position 2: "); DBGSerial.flush();
+  DBGSerial.print(f, 3);
+  DBGSerial.println("After first getPresentPosition call");
   printMemoryUsage();
-
+#endif
 
   for (int i = 0; i < NUMSERVOS; i++) {
     // Set the id
@@ -597,12 +601,24 @@ void DynamixelServoDriver::CommitServoDriver(word wMoveTime)
 //[SetRegOnAllServos] Function that is called to set the state of one
 //  register in all of the servos, like Torque on...
 //--------------------------------------------------------------------
-void DynamixelServoDriver::SetRegOnAllServos(uint8_t bReg, int32_t bVal)
+void DynamixelServoDriver::SetRegOnAllServos(uint8_t bReg, int32_t bVal, bool checkStatusErrors)
 {
   // Do quick and dirty...
   for (int i = 0; i < NUMSERVOS; i++) {
     byte id = pgm_read_byte(&cPinTable[i]);
     dxl.writeControlTableItem(bReg, id, bVal);
+    if (checkStatusErrors) {
+      uint8_t status_error = dxl.getLastStatusPacketError();
+      if (status_error) {
+      #ifdef DBGSerial
+      DBGSerial.printf("SetRegOnAllServos HW Status error: %x on ID:%u  - Resetting\n", status_error, id);
+      #endif
+      dxl.reboot(id);
+      delay(100); // give it some time... 
+      dxl.writeControlTableItem(bReg, id, bVal);  // try setting again
+      }      
+    }
+
 #ifdef DBGSerial
     int error_code = dxl.getLastLibErrCode();
     if (error_code) {
@@ -629,7 +645,9 @@ void DynamixelServoDriver::FreeServos(void)
 #endif
     InputController::controller()->AllowControllerInterrupts(true);
     _fServosFree = true;
-    Serial.println(F("(FreeServos)---> Servos Are Free"));
+    #ifdef DBGSerial
+    DBGSerial.println(F("(FreeServos)---> Servos Are Free"));
+    #endif
   }
 }
 
@@ -674,8 +692,11 @@ void DynamixelServoDriver::MakeSureServosAreOn(void)
     else {
       bioloid.readPose();
     }
-    Serial.println(F("(MakeSureServosAreOn)---> Setting TorqL to 256\n"));
-    SetRegOnAllServos(ControlTableItem::TORQUE_ENABLE, 1);  // Use sync write to do it.
+
+    #ifdef DBGSerial
+    DBGSerial.println(F("(MakeSureServosAreOn)---> Setting TorqL to 256\n"));
+    #endif
+    SetRegOnAllServos(ControlTableItem::TORQUE_ENABLE, 1, true);  // Use sync write to do it. Maybe reset as well
     SetRegOnAllServos2(ControlTableItem::TORQUE_LIMIT, 256);//Start with very low torque
     SetRegOnAllServos(ControlTableItem::LED, 0);           // turn off all servos LEDs.
 
@@ -812,9 +833,9 @@ void DynamixelServoDriver::WakeUpRoutine(void) {
       DBGSerial.print("*** Wakeup Timeout ***");
       DBGSerial.print("Should we proceed? (Y/...)");
       int ch;
-      while (Serial.read() != -1);
-      while ((ch = Serial.read()) == -1) ;
-      while (Serial.read() != -1);
+      while (DBGSerial.read() != -1);
+      while ((ch = DBGSerial.read()) == -1) ;
+      while (DBGSerial.read() != -1);
       if ((ch=='y') || (ch=='Y')) PosOK = true; 
 #endif
       lWakeUpStartTime = millis();  // clear out time
@@ -829,7 +850,7 @@ void DynamixelServoDriver::WakeUpRoutine(void) {
       delay(500); //Waiting half a second test bug bug
       ax12SetRegister2(254, ControlTableItem::TORQUE_LIMIT, 300); //Reduced Torque
       //SetRegOnAllServos2(ControlTableItem::TORQUE_LIMIT, 1023);//Turn on full Torque
-      Serial.println(F("(WakeUpRoutine) --> SafetyMode\n"));
+      DBGSerial.println(F("(WakeUpRoutine) --> SafetyMode\n"));
 #else
       SetRegOnAllServos(ControlTableItem::TORQUE_ENABLE, 1);  // Use sync write to do it.
       delay(500); //Waiting half a second test bug bug
@@ -900,7 +921,7 @@ boolean DynamixelServoDriver::ProcessTerminalCommand(byte *psz, byte bLen)
   if ((bLen == 1) && ((*psz == 't') || (*psz == 'T'))) {
     // Test to see if all servos are responding...
     bool servo_1_in_table = false;
-    Serial.println(F("Index\tID\tModel:Firm\tDelay\tPos\tAng\tVoltage\tTemp\tHW"));
+    DBGSerial.println(F("Index\tID\tModel:Firm\tDelay\tPos\tAng\tVoltage\tTemp\tHW"));
     for (int i = 0; i < NUMSERVOS; i++) {
       uint32_t error_code;
       uint32_t last_error = 0;
