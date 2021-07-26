@@ -521,7 +521,7 @@ void setup(){
   g_fShowDebugPrompt = true;
   g_fDebugOutput = false;
 #ifdef DBGSerial    
-  DBGSerial.begin(115200);
+  DBGSerial.begin(9600);
   if (CrashReport) {
     DBGSerial.print(CrashReport);
   }

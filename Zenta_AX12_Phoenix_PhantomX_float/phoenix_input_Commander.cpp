@@ -35,11 +35,13 @@
 
 //[CONSTANTS]
 enum {
-  WALKMODE=0, //TRANSLATEMODE, ROTATEMODE, //Only two modes, walk and single leg
+  WALKMODE=0, TRANSLATEMODE, ROTATEMODE, //Only two modes, walk and single leg
 #ifdef OPT_SINGLELEG      
   SINGLELEGMODE, 
 #endif
   MODECNT};
+const __FlashStringHelper* const Mode_table[] PROGMEM = { F("Crawling Mode"), F("Translate Mode"), F("Rotate Mode"), F("Single Leg Mode") }; 
+
 enum {
   NORM_NORM=0, NORM_LONG, HIGH_NORM, HIGH_LONG};
 
@@ -242,9 +244,10 @@ void CommanderInputController::ControlInput(void)
 				else {
 					MSound(1, 50, 2000);
 				}
-				if (_controlMode == WALKMODE) {
-					strcpy(g_InControlState.DataPack, "Crawling Mode");
-				}
+				if (_controlMode != SINGLELEGMODE) {
+					strcpy(g_InControlState.DataPack, (const char *)Mode_table[_controlMode]);
+			  }
+
 #ifdef OPT_SINGLELEG      
 				if (_controlMode == SINGLELEGMODE) {
 					g_InControlState.SelectedLeg = 2;//Zenta made the front right as default at start
@@ -254,6 +257,7 @@ void CommanderInputController::ControlInput(void)
 				g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
 				g_InControlState.lWhenWeLastSetDatamode = millis();
 			}
+
 
 			//Stand up, sit down 
     		if ((_command.buttons & BUT_R1) && !(_buttonsPrev & BUT_R1)) {
@@ -455,6 +459,26 @@ void CommanderInputController::ControlInput(void)
 				}
 			}
 
+			_bodyYShift = 0;
+
+			if (_controlMode == TRANSLATEMODE) {
+				g_InControlState.BodyPos.x = SmoothControl(((_command.leftH) * 2 / 3), g_InControlState.BodyPos.x, SmDiv);
+				g_InControlState.BodyPos.z = SmoothControl(((_command.leftV) * 2 / 3), g_InControlState.BodyPos.z, SmDiv);
+				g_InControlState.BodyRot1.y = SmoothControl(((_command.rightH) * 2), g_InControlState.BodyRot1.y, SmDiv);
+
+				//      g_InControlState.BodyPos.x = (lx)/2;
+				//      g_InControlState.BodyPos.z = -(ly)/3;
+				//      g_InControlState.BodyRot1.y = (rx)*2;
+				_bodyYShift = float(-(_command.rightV-127) / 2); //Zenta should be joystick1.getAxis(AXIS_RY) - 127
+			}
+
+			//[Rotate functions]
+			if (_controlMode == ROTATEMODE) {
+				g_InControlState.BodyRot1.x = (_command.leftV);
+				g_InControlState.BodyRot1.y = (_command.rightH) * 2;
+				g_InControlState.BodyRot1.z = (_command.leftH);
+				_bodyYShift = (-(_command.rightV-127) / 2); //Zenta Should be -127 or just replace with ry
+			}
 
 			//[Single leg functions]
 #ifdef OPT_SINGLELEG      
