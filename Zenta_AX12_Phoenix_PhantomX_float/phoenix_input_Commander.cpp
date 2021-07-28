@@ -1,4 +1,4 @@
-//#define DEBUG_COMMANDER
+#define DEBUG_COMMANDER
 //TO DO:
 //Updated function explanation
 //Define max Strafe length, rotation angles and translation length, defined in the Hex_Cfg and a default #ifndef here?
@@ -42,6 +42,12 @@ enum {
   MODECNT};
 enum {
   NORM_NORM=0, NORM_LONG, HIGH_NORM, HIGH_LONG};
+
+#ifdef DEBUG_COMMANDER
+#ifndef DBGSerial
+#undef DEBUG_COMMANDER
+#endif
+#endif
 
 
 #define ARBOTIX_TO  5000        // if we don't get a valid message in this number of mills turn off
@@ -116,13 +122,14 @@ const char LegH_3[] PROGMEM = "Low leg height";
 
 const char* const LegH_table[] PROGMEM = { LegH_0, LegH_1, LegH_2, LegH_3 };//A table to hold the names
 
-/* the Commander will send out a frame at about 30hz, this class helps decipher the output. */
+
 class Commander
 {    
 public:
   Commander(); 
   void begin(unsigned long baud);
   int ReadMsgs();         // must be called regularly to clean out Serial buffer
+	void processInputChars();
 
   // joystick values are -125 to 125
   signed char rightV;      // vertical stick movement = forward speed
@@ -144,11 +151,22 @@ public:
 	static byte    _buttonsPrev;
 	static byte    _extPrev;
 
+	#ifdef COMMANDER_USE_TIMER
+	static  void Commander_timer_isr();
+	#if defined(TEENSYDUINO)
+	IntervalTimer _timer; 
+	#endif
+#endif
+
+
+
     // Hooks are used as callbacks for button presses -- NOT IMPLEMENT YET
 
 private:
   // internal variables used for reading messages
   unsigned char vals[13];  // (Zenta 7 -> 11.)temporary values, moved after we confirm checksum
+  bool _have_valid_msg;		//  Do we have a valid message...
+  static volatile bool _in_readMsgs;  // Is our main code in the function?
   int index;              // -1 = waiting for new packet
   int checksum;
 };
@@ -158,6 +176,9 @@ private:
 // Global - Local to this file only...
 //=============================================================================
 		Commander _command = Commander();
+	#if defined(ARDUINO_OpenCM904)
+	HardwareTimer _timer(1); // using timer 1... 
+	#endif
 
 // some external or forward function references.
 
@@ -679,9 +700,13 @@ boolean CommanderInputController::ProcessTerminalCommand(byte *psz, byte bLen)
 //==============================================================================
 // Commander::Commander - Constructor
 //==============================================================================
+volatile bool Commander::_in_readMsgs = false;  // Is our main code in the function?
+
 Commander::Commander(){
   index = -1;
+  _have_valid_msg = false;
 }
+
 
 //==============================================================================
 // Commander::begin 
@@ -765,13 +790,25 @@ void Commander::begin(unsigned long baud){
   delay(10);
   XBeeSerial.begin(38400); //38400
 #endif  
+	// See about setting up timer
+#ifdef COMMANDER_USE_TIMER
+#if defined(TEENSYDUINO)
+	_timer.begin(&Commander_timer_isr, COMMANDER_USE_TIMER);
+#elif defined(ARDUINO_OpenCM904)
+  _timer.pause(); // Pause the timer while we're configuring it
+  _timer.setPeriod(COMMANDER_USE_TIMER); // in microseconds
+  _timer.attachInterrupt(Commander_timer_isr);
+  _timer.refresh();
+  _timer.resume();
+#endif
+#endif
 
 }
 
 //==============================================================================
-// ReadMsgs
+// Commander::processInputChars - Process any characters that are pending 
 //==============================================================================
-int Commander::ReadMsgs(){
+void Commander::processInputChars() {
   while(XBeeSerial.available() > 0){
     if(index == -1){         // looking for new packet
       if(XBeeSerial.read() == 0xff){
@@ -793,47 +830,57 @@ int Commander::ReadMsgs(){
       if(index == 7){ // packet complete
         if(checksum%256 != 255){
 #ifdef DEBUG_COMMANDER
-#ifdef DBGSerial  
           if (g_fDebugOutput) {
             DBGSerial.println("Packet Error");
           }
-#endif          
 #endif
           // packet error!
           index = -1;
-          return 0;
         }
         else{
           digitalWrite(USER, digitalRead(USER)? LOW : HIGH);
-          rightV = (signed char)( (int)vals[0]-128 );
-          rightH = (signed char)( (int)vals[1]-128 );
-          leftV = (signed char)( (int)vals[2]-128 );
-          leftH = (signed char)( (int)vals[3]-128 );
-          buttons = vals[4];
-#ifdef DEBUG_COMMANDER
-#ifdef DBGSerial  
-          if (g_fDebugOutput) {
-            DBGSerial.print(buttons, HEX);
-            DBGSerial.print(" : ");
-            DBGSerial.print(rightV, DEC);
-            DBGSerial.print(" ");
-            DBGSerial.print(rightH, DEC);
-						DBGSerial.print(" ");
-            DBGSerial.print(leftV, DEC);
-						DBGSerial.print(" ");
-            DBGSerial.println(leftH, DEC);
-          }
-#endif
-#endif
+          for (uint8_t i = 0; i < 5; i++) vals[i+7] = vals[i]; // Copy 0->7, 1->8...4->11
+          _have_valid_msg = true;
         }
         index = -1;
-        while (XBeeSerial.read() != -1)
-          ;
-        return 1;
       }
     }
   }
-  return 0;
+}
+//==============================================================================
+// ReadMsgs
+//==============================================================================
+int Commander::ReadMsgs(){
+	// Process any pending characters.
+	_in_readMsgs = true;
+	processInputChars();
+  if (_have_valid_msg == 0) {
+		_in_readMsgs = false;
+  	return 0;
+  }
+
+  rightV = (signed char)( (int)vals[7]-128 );
+  rightH = (signed char)( (int)vals[8]-128 );
+  leftV = (signed char)( (int)vals[9]-128 );
+  leftH = (signed char)( (int)vals[10]-128 );
+  buttons = vals[11];
+	_have_valid_msg = false;
+	_in_readMsgs = false;
+
+#ifdef DEBUG_COMMANDER
+  if (g_fDebugOutput) {
+    DBGSerial.print(buttons, HEX);
+    DBGSerial.print(" : ");
+    DBGSerial.print(rightV, DEC);
+    DBGSerial.print(" ");
+    DBGSerial.print(rightH, DEC);
+		DBGSerial.print(" ");
+    DBGSerial.print(leftV, DEC);
+		DBGSerial.print(" ");
+    DBGSerial.println(leftH, DEC);
+  }
+#endif
+  return 1;
 }
 //==============================================================================
 //==============================================================================
@@ -841,7 +888,9 @@ int Commander::ReadMsgs(){
 bool CommanderInputController::SendMsgs(byte Voltage, byte CMD, char Data[21]){
 #ifdef DBGSerial
 	if (CMD) {
-		DBGSerial.printf("%u %u:%s\n", Voltage, CMD, Data);
+		DBGSerial.print(Voltage, DEC);
+		DBGSerial.print(" "); DBGSerial.print(CMD, DEC);
+		DBGSerial.print(":"); DBGSerial.println(Data);
 	}
 #endif
 	// TODO, output to optional display
@@ -865,4 +914,16 @@ bool CommanderInputController::SendMsgs(byte Voltage, byte CMD, char Data[21]){
     //XBeeSerial.write((byte)0);        // extra, not used..
 
     XBeeSerial.write((byte)bChksum);*/
+
+//==============================================================================
+// Experiment with background readining in the XBee msgs...
+// Right now we only use 0-4
+//==============================================================================
+#ifdef COMMANDER_USE_TIMER
+void Commander::Commander_timer_isr() {	
+	if (!_in_readMsgs) _command.processInputChars();
+}
+#endif	
+
+
 #endif // USE_COMMANDER

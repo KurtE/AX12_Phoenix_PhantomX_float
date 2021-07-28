@@ -79,8 +79,10 @@ void BioloidInterpolate::writePose(){
     if (!dxl_.syncWrite(&sw_infos_)) {
 #ifdef DBGSerial
       DBGSerial.print("*** syncwrite failed: ");
-      DBGSerial.printf("R:%u %u Cnt:%u changed: %d ***\n", 
-        sw_infos_.addr, sw_infos_.addr_length,  sw_infos_.xel_count,  sw_infos_.is_info_changed);
+      DBGSerial.print("R:"); DBGSerial.print(sw_infos_.addr, DEC);
+      DBGSerial.print(" "); DBGSerial.print(sw_infos_.addr_length, DEC);
+      DBGSerial.print(" Cnt:"); DBGSerial.print(sw_infos_.xel_count, DEC);
+      DBGSerial.print(" changed:"); DBGSerial.println(sw_infos_.is_info_changed, DEC);
 #endif
 
     }
@@ -165,4 +167,3 @@ void BioloidInterpolate::setNextPoseByIndex(int index, int pos) {  // set a serv
     nextpose_[index] = (pos << BIOLOID_SHIFT);
   }
 }
-

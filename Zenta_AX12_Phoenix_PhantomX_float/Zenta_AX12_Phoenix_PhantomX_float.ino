@@ -28,7 +28,7 @@
 
 #define DEFINE_HEX_GLOBALS
 #include <Arduino.h>
-#include <EEPROM.h>
+//#include <EEPROM.h>
 #include <avr\pgmspace.h>
 #include "Hex_Cfg.h"
 

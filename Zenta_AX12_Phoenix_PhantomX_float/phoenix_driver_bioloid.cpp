@@ -174,11 +174,11 @@ void DynamixelServoDriver::Init(void) {
 #ifdef DBGSerial
     DBGSerial.println(F("\n*** userial connected ***"));
     const uint8_t* psz = userial.manufacturer();
-    if (psz && *psz) DBGSerial.printf("  manufacturer: %s\n", psz);
+    if (psz && *psz) {DBGSerial.print("  manufacturer: "); DBGSerial.println(psz); }
     const uint8_t* pszProduct = userial.product();
-    if (pszProduct && *pszProduct) DBGSerial.printf("  product: %s\n", pszProduct);
+    if (pszProduct && *pszProduct) {DBGSerial.print("  product: "); DBGSerial.println(psz); }
     psz = userial.serialNumber();
-    if (psz && *psz) DBGSerial.printf("  Serial: %s\n", psz);
+    if (psz && *psz) DBGSerial.print("  Serial: "); DBGSerial.println(psz); }
 #endif
   }
   userial.begin(DXL_BAUD);  // need to start off this one manually.
@@ -611,7 +611,9 @@ void DynamixelServoDriver::SetRegOnAllServos(uint8_t bReg, int32_t bVal, bool ch
       uint8_t status_error = dxl.getLastStatusPacketError();
       if (status_error) {
       #ifdef DBGSerial
-      DBGSerial.printf("SetRegOnAllServos HW Status error: %x on ID:%u  - Resetting\n", status_error, id);
+      DBGSerial.print("SetRegOnAllServos HW Status error: "); DBGSerial.print(status_error, HEX); 
+      DBGSerial.print(" on ID:"); DBGSerial.print(id, DEC);
+      DBGSerial.println(" - Resetting");
       #endif
       dxl.reboot(id);
       delay(100); // give it some time... 
@@ -622,7 +624,10 @@ void DynamixelServoDriver::SetRegOnAllServos(uint8_t bReg, int32_t bVal, bool ch
 #ifdef DBGSerial
     int error_code = dxl.getLastLibErrCode();
     if (error_code) {
-      DBGSerial.printf("SetRegOnAllServos failed: id:%u Reg:%u Val:%d Error:%d\n", id, bReg, bVal, error_code);
+      DBGSerial.print("SetRegOnAllServos failed: id:"); DBGSerial.print(id, DEC);
+      DBGSerial.print(" Reg:"); DBGSerial.print(bReg, DEC);
+      DBGSerial.print(" Val:"); DBGSerial.print(bVal, DEC);
+      DBGSerial.print(" Error:"); DBGSerial.println(error_code, DEC);
     }
 #endif    
   }

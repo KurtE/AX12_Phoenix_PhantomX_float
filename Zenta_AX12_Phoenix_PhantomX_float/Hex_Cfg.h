@@ -34,14 +34,18 @@
 //==================================================================================================================================
 #if defined(ARDUINO_OpenCM904)
 #define USE_COMMANDER  // Use the XBee Commander code. 
+#define COMMANDER_USE_TIMER 16000 // time in US... 
 #else 
 
-#define USE_USB_JOYSTICK
-#define USE_BT_KEYPAD
-#define BLUETOOTH   // Enable the Bluetooth code in the USB joystick.
+//#define USE_USB_JOYSTICK
+//#define USE_BT_KEYPAD
+//#define BLUETOOTH   // Enable the Bluetooth code in the USB joystick.
 
-//#define USE_COMMANDER  // Use the XBee Commander code.
+#define USE_COMMANDER  // Use the XBee Commander code.
+#define COMMANDER_USE_TIMER 16000 // time in US... 
+
 //#define_USE_DIY_COMMANDER 
+
 #endif
 
 //==================================================================================================================================
@@ -58,7 +62,12 @@
 #endif
 
 #if defined(KINETISK) || defined(KINETISL) || defined(__IMXRT1062__)
+#if defined(ARDUINO_TEENSY31)
+#define DXL_SERIAL Serial3 // Old through hole board test...
+#else
 #define DXL_SERIAL Serial1
+#endif
+
 #define DXL_DIR_PIN -1 // 2 - 
 #define DXL_BAUD 1000000 
 #define DXL_SERVO_COUNT 18
@@ -70,6 +79,13 @@
 #define DXL_BAUD 1000000 
 #define DXL_SERVO_COUNT 18
 #endif
+#if defined(ARDUINO_SAMD_MKRZERO)
+#define DXL_SERIAL Serial1
+#define DXL_DIR_PIN  A6
+#define DXL_BAUD 1000000 
+#define DXL_SERVO_COUNT 18
+#endif
+
 
 #ifdef MKIV_XL430
 #define DYNAMIXEL_PROTOCOL  2
@@ -213,7 +229,9 @@
 //====================================================================
 // XBEE on non mega???
 //#if defined(__MK20DX256__)
-#if defined(KINETISK)  || defined(__IMXRT1062__)
+#if defined(ARDUINO_TEENSY31)
+#define XBeeSerial Serial1  // Old through hole board...
+#elif defined(KINETISK)  || defined(__IMXRT1062__)
 #define XBeeSerial Serial3
 #elif defined(ARDUINO_OpenCM904)
 #define XBeeSerial Serial2
@@ -227,9 +245,15 @@
 //--------------------------------------------------------------------
 //[Processor Pin Numbers]
 //#if defined(__MK20DX256__)
-#if defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__) || defined(__IMXRT1062__)
+#if defined(ARDUINO_TEENSY31)
+#define SOUND_PIN 6
+#define USER 13
+#elif defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__) || defined(__IMXRT1062__)
 #define SOUND_PIN    36
 #define USER 13
+#elif defined(ARDUINO_OpenCM904)
+#define USER 14
+
 #else
 #define SOUND_PIN    1 //0xff        // Tell system we have no IO pin...
 #define USER 0                        // defaults to 13 but Arbotix on 0...
@@ -237,7 +261,13 @@
 
 // Define Analog pin and minimum voltage that we will allow the servos to run
 //#if defined(__MK20DX256__)
-#if defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__) || defined(__IMXRT1062__)
+#if defined(ARDUINO_TEENSY31)
+#define cVoltagePin  A10
+#define CVADR1      402  // VD Resistor 1 - reduced as only need ratio... 40.2K and 10K
+#define CVADR2      100    // VD Resistor 2
+#define CVREF       330    // 3.3v
+
+#elif defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__) || defined(__IMXRT1062__)
 // Our Teensy board
 #define cVoltagePin  23
 
