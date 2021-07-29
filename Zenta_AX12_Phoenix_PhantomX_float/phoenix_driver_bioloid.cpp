@@ -900,6 +900,7 @@ void DynamixelServoDriver::ShowTerminalCommandList(void)
   DBGSerial.println(F("F<frame length> - FL in ms"));    // BUGBUG::
   DBGSerial.println(F("A - Toggle AX12 speed control"));
   DBGSerial.println(F("T - Test Servos"));
+  DBGSerial.println(F("W<ID> - Wiggle servo ID... "));
   DBGSerial.println(F("I - Set Id <frm> <to"));
   DBGSerial.println(F("S - Track Servos"));
 #ifdef OPT_PYPOSE
@@ -937,80 +938,12 @@ boolean DynamixelServoDriver::ProcessTerminalCommand(byte *psz, byte bLen)
   }
 
   if ((bLen == 1) && ((*psz == 't') || (*psz == 'T'))) {
-    // Test to see if all servos are responding...
-    bool servo_1_in_table = false;
-    DBGSerial.println(F("Index\tID\tModel:Firm\tDelay\tPos\tAng\tVoltage\tTemp\tHW"));
-    for (int i = 0; i < NUMSERVOS; i++) {
-      uint32_t error_code;
-      uint32_t errors[10];
-      uint8_t error_count = 0;
-      int servo_id = pgm_read_byte(&cPinTable[i]);
-      if (servo_id == 1) servo_1_in_table = true;
-      DBGSerial.print(i, DEC);
-      DBGSerial.print(F("\t"));
-      DBGSerial.print(servo_id, DEC);
-      DBGSerial.print(F("\t"));
-      DBGSerial.print(dxl.getModelNumber(servo_id), HEX);
-      if ((error_code = dxl.getLastLibErrCode())) {
-        errors[error_count] = error_code;
-        error_count++;
-      }
-      DBGSerial.print(F("\t"));
-      DBGSerial.print(dxl.readControlTableItem(ControlTableItem::FIRMWARE_VERSION, servo_id), HEX);
-      if ((error_code = dxl.getLastLibErrCode())) {
-        errors[error_count] = error_code;
-        error_count++;
-      }
-      DBGSerial.print(F("\t"));
-      DBGSerial.print(dxl.readControlTableItem(ControlTableItem::RETURN_DELAY_TIME, servo_id), DEC);
-      if ((error_code = dxl.getLastLibErrCode())) {
-        errors[error_count] = error_code;
-        error_count++;
-      }
-      DBGSerial.print(F("\t"));
-      DBGSerial.print(static_cast<uint16_t>(dxl.getPresentPosition(servo_id)), DEC);
-      if ((error_code = dxl.getLastLibErrCode())) {
-        errors[error_count] = error_code;
-        error_count++;
-      }
-      DBGSerial.print(F("\t"));
-      DBGSerial.print(dxl.getPresentPosition(servo_id, UNIT_DEGREE), 2);
-      if ((error_code = dxl.getLastLibErrCode())) {
-        errors[error_count] = error_code;
-        error_count++;
-      }
-      DBGSerial.print(F("\t"));
-      DBGSerial.print(dxl.readControlTableItem(ControlTableItem::PRESENT_VOLTAGE, servo_id), DEC);
-      if ((error_code = dxl.getLastLibErrCode())) {
-        errors[error_count] = error_code;
-        error_count++;
-      }
-      DBGSerial.print(F("\t"));
-      DBGSerial.print(dxl.readControlTableItem( ControlTableItem::PRESENT_TEMPERATURE, servo_id), DEC);
-      if ((error_code = dxl.getLastLibErrCode())) {
-        errors[error_count] = error_code;
-        error_count++;
-      }
-      DBGSerial.print(F("\t"));
-      DBGSerial.print(dxl.getLastStatusPacketError(), HEX);
-
-      DBGSerial.print(F("\t"));
-      DBGSerial.print(error_count, DEC);
-      DBGSerial.print(F(":"));
-      for (uint8_t i = 0; i < error_count; i++) {
-        DBGSerial.print(errors[i], HEX);
-        DBGSerial.print(" ");
-      }
-      DBGSerial.println();        
-      delay(25);
-    }
-    if (!servo_1_in_table) {
-      DBGSerial.print(F("*(1)="));
-      DBGSerial.print(static_cast<uint16_t>(dxl.getPresentPosition(1)), DEC);
-      if (dxl.getLastLibErrCode()) DBGSerial.println(" ** Not Found **");
-      else DBGSerial.print(" ** Found **");
-    }
+    TCTestServos();
   }
+  if ((*psz == 'w') || (*psz == 'W')) {
+    TCWiggleServo(++psz);
+  }
+
   if ((*psz == 'i') || (*psz == 'I')) {
     TCSetServoID(++psz);
   }
@@ -1072,6 +1005,146 @@ void DynamixelServoDriver::TCSetServoID(byte *psz)
   }
 }
 
+//==============================================================================
+// TCWiggleServo - debug function wiggle specified servo
+//==============================================================================
+void DynamixelServoDriver::TCWiggleServo(byte *psz)
+{
+  int servo_id = GetCmdLineNum(&psz);
+  int error_code;
+
+  if (!servo_id)return;
+  DBGSerial.print("Try to wiggle: "); DBGSerial.println(servo_id, DEC);
+  dxl.torqueOn(servo_id);
+  dxl.writeControlTableItem(ControlTableItem::TORQUE_LIMIT, servo_id, 1023);
+  float servo_pos = dxl.getPresentPosition(servo_id);
+  DBGSerial.print("Start from: "); DBGSerial.println(servo_pos, 1);
+
+  if ((error_code = dxl.getLastLibErrCode())) {
+    DBGSerial.print("Failed: "); DBGSerial.println(error_code, DEC);
+    return;
+  }
+
+
+  // lets move from current, to CENTER-20 degrees, CENTER+20 degrees, back to center.
+  float target_pos = SERVO_CENTER_VALUE - (45 * SERVO_TIC_PER_DEG);
+  float target_delta = (float)SERVO_TIC_PER_DEG / 3.0;
+  DBGSerial.print("Target: "); 
+  DBGSerial.print(target_pos, 1); 
+  DBGSerial.print(" delta: "); 
+  DBGSerial.println(target_delta, 3);
+
+  // Quick and dirty.
+  while (servo_pos > target_pos) {
+    servo_pos -= target_delta;
+    if (servo_pos < target_pos) servo_pos = target_pos;
+    dxl.setGoalPosition(servo_id, servo_pos);
+    delay(10);
+  };
+
+  target_pos = SERVO_CENTER_VALUE + (45 * SERVO_TIC_PER_DEG);
+  DBGSerial.print("Target: "); DBGSerial.print(target_pos, 1); 
+  DBGSerial.print(" delta: "); DBGSerial.println(target_delta, 3);
+
+  // Quick and dirty.
+  while (servo_pos < target_pos) {
+    servo_pos += target_delta;
+    if (servo_pos > target_pos) servo_pos = target_pos;
+    dxl.setGoalPosition(servo_id, servo_pos);
+    delay(10);
+  };
+
+  target_pos = SERVO_CENTER_VALUE;
+  DBGSerial.print("Target: "); DBGSerial.print(target_pos, 1); 
+  DBGSerial.print(" delta: "); DBGSerial.println(target_delta, 3);
+  while (servo_pos > target_pos) {
+    servo_pos -= target_delta;
+    if (servo_pos < target_pos) servo_pos = target_pos;
+    dxl.setGoalPosition(servo_id, servo_pos);
+    delay(10);
+  };
+}
+
+
+//==============================================================================
+// TCTestServos - Enum all of the Hexapod servos and show register details
+//==============================================================================
+void DynamixelServoDriver::TCTestServos()
+{
+  // Test to see if all servos are responding...
+  bool servo_1_in_table = false;
+  DBGSerial.println(F("Index\tID\tModel:Firm\tDelay\tPos\tAng\tVoltage\tTemp\tHW"));
+  for (int i = 0; i < NUMSERVOS; i++) {
+    uint32_t error_code;
+    uint32_t errors[10];
+    uint8_t error_count = 0;
+    int servo_id = pgm_read_byte(&cPinTable[i]);
+    if (servo_id == 1) servo_1_in_table = true;
+    DBGSerial.print(i, DEC);
+    DBGSerial.print(F("\t"));
+    DBGSerial.print(servo_id, DEC);
+    DBGSerial.print(F("\t"));
+    DBGSerial.print(dxl.getModelNumber(servo_id), HEX);
+    if ((error_code = dxl.getLastLibErrCode())) {
+      errors[error_count] = error_code;
+      error_count++;
+    }
+    DBGSerial.print(F("\t"));
+    DBGSerial.print(dxl.readControlTableItem(ControlTableItem::FIRMWARE_VERSION, servo_id), HEX);
+    if ((error_code = dxl.getLastLibErrCode())) {
+      errors[error_count] = error_code;
+      error_count++;
+    }
+    DBGSerial.print(F("\t"));
+    DBGSerial.print(dxl.readControlTableItem(ControlTableItem::RETURN_DELAY_TIME, servo_id), DEC);
+    if ((error_code = dxl.getLastLibErrCode())) {
+      errors[error_count] = error_code;
+      error_count++;
+    }
+    DBGSerial.print(F("\t"));
+    DBGSerial.print(static_cast<uint16_t>(dxl.getPresentPosition(servo_id)), DEC);
+    if ((error_code = dxl.getLastLibErrCode())) {
+      errors[error_count] = error_code;
+      error_count++;
+    }
+    DBGSerial.print(F("\t"));
+    DBGSerial.print(dxl.getPresentPosition(servo_id, UNIT_DEGREE), 2);
+    if ((error_code = dxl.getLastLibErrCode())) {
+      errors[error_count] = error_code;
+      error_count++;
+    }
+    DBGSerial.print(F("\t"));
+    DBGSerial.print(dxl.readControlTableItem(ControlTableItem::PRESENT_VOLTAGE, servo_id), DEC);
+    if ((error_code = dxl.getLastLibErrCode())) {
+      errors[error_count] = error_code;
+      error_count++;
+    }
+    DBGSerial.print(F("\t"));
+    DBGSerial.print(dxl.readControlTableItem( ControlTableItem::PRESENT_TEMPERATURE, servo_id), DEC);
+    if ((error_code = dxl.getLastLibErrCode())) {
+      errors[error_count] = error_code;
+      error_count++;
+    }
+    DBGSerial.print(F("\t"));
+    DBGSerial.print(dxl.getLastStatusPacketError(), HEX);
+
+    DBGSerial.print(F("\t"));
+    DBGSerial.print(error_count, DEC);
+    DBGSerial.print(F(":"));
+    for (uint8_t i = 0; i < error_count; i++) {
+      DBGSerial.print(errors[i], HEX);
+      DBGSerial.print(" ");
+    }
+    DBGSerial.println();
+    delay(25);
+  }
+  if (!servo_1_in_table) {
+    DBGSerial.print(F("*(1)="));
+    DBGSerial.print(static_cast<uint16_t>(dxl.getPresentPosition(1)), DEC);
+    if (dxl.getLastLibErrCode()) DBGSerial.println(" ** Not Found **");
+    else DBGSerial.print(" ** Found **");
+  }
+}
 //==============================================================================
 // TCTrackServos - Lets set a mode to track servos.  Can use to help figure out
 // proper initial positions and min/max values...
