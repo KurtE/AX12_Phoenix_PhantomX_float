@@ -2428,7 +2428,7 @@ void LegIK (float feetPosX, float feetPosY, float feetPosZ, int legIndex)
 //--------------------------------------------------------------------
 //[CHECK ANGLES] Checks the mechanical limits of the servos
 //--------------------------------------------------------------------
-float CheckServoAngleBounds(short sID,  float sVal, float sMin, float sMax) {
+float CheckServoAngleBounds(__attribute__((unused))short sID,  float sVal, float sMin, float sMax) {
 
   // Pull into simple function as so I can report errors on debug
   // Note ID is bogus, but something to let me know which one.
@@ -2603,7 +2603,7 @@ void ResetLegInitAngles(void)
 //--------------------------------------------------------------------
 // ResetLegInitAngles - This is used when we allow the user to
 //--------------------------------------------------------------------
-void RotateLegInitAngles (int iDeltaAngle)
+void RotateLegInitAngles (__attribute__((unused))int iDeltaAngle)
 {
 #ifdef OPT_DYNAMIC_ADJUST_LEGS
   for (int LegIndex = 0; LegIndex < CNT_LEGS; LegIndex++) {

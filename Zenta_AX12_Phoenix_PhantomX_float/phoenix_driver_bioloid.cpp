@@ -174,17 +174,24 @@ void DynamixelServoDriver::Init(void) {
 #ifdef DBGSerial
     DBGSerial.println(F("\n*** userial connected ***"));
     const uint8_t* psz = userial.manufacturer();
-    if (psz && *psz) {DBGSerial.print("  manufacturer: "); DBGSerial.println(psz); }
+    if (psz && *psz) {
+      DBGSerial.print("  manufacturer: ");
+      DBGSerial.println(psz);
+    }
     const uint8_t* pszProduct = userial.product();
-    if (pszProduct && *pszProduct) {DBGSerial.print("  product: "); DBGSerial.println(psz); }
+    if (pszProduct && *pszProduct) {
+      DBGSerial.print("  product: ");
+      DBGSerial.println(psz);
+    }
     psz = userial.serialNumber();
-    if (psz && *psz) DBGSerial.print("  Serial: "); DBGSerial.println(psz); }
-#endif
+    if (psz && *psz) DBGSerial.print("  Serial: "); DBGSerial.println(psz);
   }
-  userial.begin(DXL_BAUD);  // need to start off this one manually.
-  bioloid.begin(DXL_BAUD, &userial);
+#endif
+}
+userial.begin(DXL_BAUD);  // need to start off this one manually.
+bioloid.begin(DXL_BAUD, &userial);
 
-#else 
+#else
 #ifdef TEENSYDUINO
   dxl.setPort(dxl_port);
 #endif
@@ -199,112 +206,118 @@ void DynamixelServoDriver::Init(void) {
   bioloid.begin();
 #endif
 #ifdef DBGSerial
-  DBGSerial.println("After dxl/bioloid begin");
-  printMemoryUsage();
+#define xstr(s) str(s)
+#define str(s) #s
+DBGSerial.print("DXL_SERIAL: " ); DBGSerial.print(xstr(DXL_SERIAL));
+DBGSerial.print(" DIR PIN: "); DBGSerial.print(DXL_DIR_PIN, DEC);
+DBGSerial.print(" Protocol: "); DBGSerial.print(DYNAMIXEL_PROTOCOL, DEC);
+DBGSerial.print(" Baud: "); DBGSerial.println(DXL_BAUD);
+DBGSerial.println("After dxl/bioloid begin");
+printMemoryUsage();
 #endif
-  _fServosFree = true;
-  bioloid.poseSize = NUMSERVOS;
+_fServosFree = true;
+bioloid.poseSize = NUMSERVOS;
 #ifdef OPT_CHECK_SERVO_RESET
-  uint16_t w;
-  float   f;
-  int     count_missing = 0;
-  int     missing_servo = -1;
-  bool    servo_1_in_table = false;
+uint16_t w;
+float   f;
+int     count_missing = 0;
+int     missing_servo = -1;
+bool    servo_1_in_table = false;
 
 #ifdef DBGSerial
-  f = dxl.getPresentPosition(2);
-  DBGSerial.print("Get position 2: "); DBGSerial.flush();
-  DBGSerial.print(f, 3);
-  DBGSerial.println("After first getPresentPosition call");
-  printMemoryUsage();
+f = dxl.getPresentPosition(2);
+DBGSerial.print("Get position 2: "); DBGSerial.flush();
+DBGSerial.print(f, 3);
+DBGSerial.println("After first getPresentPosition call");
+printMemoryUsage();
 #endif
 
-  for (int i = 0; i < NUMSERVOS; i++) {
-    // Set the id
-    uint8_t servo_id = cPinTable[i];
-    bioloid.setId(i, servo_id);
+for (int i = 0; i < NUMSERVOS; i++) {
+  // Set the id
+  uint8_t servo_id = cPinTable[i];
+  bioloid.setId(i, servo_id);
 
-    if (cPinTable[i] == 1)
-      servo_1_in_table = true;
+  if (cPinTable[i] == 1)
+    servo_1_in_table = true;
 
-    // Now try to get it's position
+  // Now try to get it's position
+  f = dxl.getPresentPosition(servo_id);
+  if ((f == 0.0) && (dxl.getLastLibErrCode() != DXL_LIB_OK)) {
+    // Try a second time to make sure.
+    delay(25);
     f = dxl.getPresentPosition(servo_id);
     if ((f == 0.0) && (dxl.getLastLibErrCode() != DXL_LIB_OK)) {
-      // Try a second time to make sure.
-      delay(25);
-      f = dxl.getPresentPosition(servo_id);
-      if ((f == 0.0) && (dxl.getLastLibErrCode() != DXL_LIB_OK)) {
-        // We have a failure
+      // We have a failure
 #ifdef DBGSerial
-        DBGSerial.print(F("Servo("));
-        DBGSerial.print(i, DEC);
-        DBGSerial.print(F("): "));
-        DBGSerial.print(servo_id, DEC);
-        DBGSerial.println(F(" not found"));
+      DBGSerial.print(F("Servo("));
+      DBGSerial.print(i, DEC);
+      DBGSerial.print(F("): "));
+      DBGSerial.print(servo_id, DEC);
+      DBGSerial.println(F(" not found"));
 #endif
-        if (++count_missing == 1)
-          missing_servo = servo_id;
-      }
+      if (++count_missing == 1)
+        missing_servo = servo_id;
     }
-    delay(25);
   }
+  delay(25);
+}
 
-  // Now see if we should try to recover from a potential servo that renumbered itself back to 1.
+// Now see if we should try to recover from a potential servo that renumbered itself back to 1.
 #ifdef DBGSerial
-  if (count_missing) {
-    DBGSerial.print(F("ERROR: Servo driver init: "));
-    DBGSerial.print(count_missing, DEC);
-    DBGSerial.println(F(" servos missing"));
-  }
+if (count_missing) {
+  DBGSerial.print(F("ERROR: Servo driver init: "));
+  DBGSerial.print(count_missing, DEC);
+  DBGSerial.println(F(" servos missing"));
+}
 #endif
 
-  if (count_missing && !servo_1_in_table) {
-    // Lets see if Servo 1 exists...
-    w = static_cast<uint16_t>(dxl.getPresentPosition(1));
-    if ((w != 0) || (dxl.getLastLibErrCode() == DXL_LIB_OK)) {
-      if (count_missing == 1) {
+if (count_missing && !servo_1_in_table) {
+  // Lets see if Servo 1 exists...
+  w = static_cast<uint16_t>(dxl.getPresentPosition(1));
+  if ((w != 0) || (dxl.getLastLibErrCode() == DXL_LIB_OK)) {
+    if (count_missing == 1) {
 #ifdef DBGSerial
-        DBGSerial.print(F("Servo recovery: Servo 1 found - setting id to "));
-        DBGSerial.println(missing_servo, DEC);
+      DBGSerial.print(F("Servo recovery: Servo 1 found - setting id to "));
+      DBGSerial.println(missing_servo, DEC);
 #endif
-        dxl.setID(1, missing_servo);
-        //ax12SetRegister(1, AX_ID, missing_servo);
-      } else {
-#ifdef DBGSerial
-        DBGSerial.println(F("Servo recovery: Servo 1 found - Multiple missing led on 1 set"));
-#endif
-        dxl.ledOn(missing_servo);
-        //ax12SetRegister(1, ControlTableItem::LED, 1);
-        //ax12ReadPacket(6);  // get the response...
-      }
+      dxl.setID(1, missing_servo);
+      //ax12SetRegister(1, AX_ID, missing_servo);
     } else {
 #ifdef DBGSerial
-      DBGSerial.println(F("Servo recovery: Servo 1 NOT found"));
+      DBGSerial.println(F("Servo recovery: Servo 1 found - Multiple missing led on 1 set"));
 #endif
+      dxl.ledOn(missing_servo);
+      //ax12SetRegister(1, ControlTableItem::LED, 1);
+      //ax12ReadPacket(6);  // get the response...
     }
+  } else {
+#ifdef DBGSerial
+    DBGSerial.println(F("Servo recovery: Servo 1 NOT found"));
+#endif
   }
+}
 
 #else
-  bioloid.readPose();
+bioloid.readPose();
 #endif
 #ifdef cVoltagePin
-  for (byte i = 0; i < 8; i++)
-    GetBatteryVoltage();  // init the voltage pin
+for (byte i = 0; i < 8; i++)
+  GetBatteryVoltage();  // init the voltage pin
 #endif
 
-  _fAXSpeedControl = false;//Zenta, the speed experiment is turned off
+_fAXSpeedControl = false;//Zenta, the speed experiment is turned off
 
 
-  // Currently have Turret pins not necessarily same as numerical order so
-  // Maybe should do for all pins and then set the positions by index instead
-  // of having it do a simple search on each pin...
+// Currently have Turret pins not necessarily same as numerical order so
+// Maybe should do for all pins and then set the positions by index instead
+// of having it do a simple search on each pin...
 #ifdef cTurretRotPin
-  bioloid.setId(FIRSTTURRETPIN, cTurretRotPin);
-  bioloid.setId(FIRSTTURRETPIN + 1, cTurretTiltPin);
+bioloid.setId(FIRSTTURRETPIN, cTurretRotPin);
+bioloid.setId(FIRSTTURRETPIN + 1, cTurretTiltPin);
 #endif
 
-  // Added - try to speed things up later if we do a query...
-  SetRegOnAllServos(ControlTableItem::RETURN_DELAY_TIME, 0);  // tell servos to give us back their info as quick as they can...
+// Added - try to speed things up later if we do a query...
+SetRegOnAllServos(ControlTableItem::RETURN_DELAY_TIME, 0);  // tell servos to give us back their info as quick as they can...
 
 }
 
@@ -610,15 +623,15 @@ void DynamixelServoDriver::SetRegOnAllServos(uint8_t bReg, int32_t bVal, bool ch
     if (checkStatusErrors) {
       uint8_t status_error = dxl.getLastStatusPacketError();
       if (status_error) {
-      #ifdef DBGSerial
-      DBGSerial.print("SetRegOnAllServos HW Status error: "); DBGSerial.print(status_error, HEX); 
-      DBGSerial.print(" on ID:"); DBGSerial.print(id, DEC);
-      DBGSerial.println(" - Resetting");
-      #endif
-      dxl.reboot(id);
-      delay(100); // give it some time... 
-      dxl.writeControlTableItem(bReg, id, bVal);  // try setting again
-      }      
+#ifdef DBGSerial
+        DBGSerial.print("SetRegOnAllServos HW Status error: "); DBGSerial.print(status_error, HEX);
+        DBGSerial.print(" on ID:"); DBGSerial.print(id, DEC);
+        DBGSerial.println(" - Resetting");
+#endif
+        dxl.reboot(id);
+        delay(100); // give it some time...
+        dxl.writeControlTableItem(bReg, id, bVal);  // try setting again
+      }
     }
 
 #ifdef DBGSerial
@@ -629,7 +642,7 @@ void DynamixelServoDriver::SetRegOnAllServos(uint8_t bReg, int32_t bVal, bool ch
       DBGSerial.print(" Val:"); DBGSerial.print(bVal, DEC);
       DBGSerial.print(" Error:"); DBGSerial.println(error_code, DEC);
     }
-#endif    
+#endif
   }
 }
 //--------------------------------------------------------------------
@@ -650,9 +663,9 @@ void DynamixelServoDriver::FreeServos(void)
 #endif
     InputController::controller()->AllowControllerInterrupts(true);
     _fServosFree = true;
-    #ifdef DBGSerial
+#ifdef DBGSerial
     DBGSerial.println(F("(FreeServos)---> Servos Are Free"));
-    #endif
+#endif
   }
 }
 
@@ -698,9 +711,9 @@ void DynamixelServoDriver::MakeSureServosAreOn(void)
       bioloid.readPose();
     }
 
-    #ifdef DBGSerial
+#ifdef DBGSerial
     DBGSerial.println(F("(MakeSureServosAreOn)---> Setting TorqL to 256\n"));
-    #endif
+#endif
     SetRegOnAllServos(ControlTableItem::TORQUE_ENABLE, 1, true);  // Use sync write to do it. Maybe reset as well
     SetRegOnAllServos2(ControlTableItem::TORQUE_LIMIT, 256);//Start with very low torque
     SetRegOnAllServos(ControlTableItem::LED, 0);           // turn off all servos LEDs.
@@ -811,15 +824,15 @@ void DynamixelServoDriver::WakeUpRoutine(void) {
       }
 #ifdef DEBUG_WakeUp_Pos
       DBGSerial.print(CurrentCoxaPos, DEC);
-      DBGSerial.print((servos_still_waking_up & servo_leg_mask)? F("-") : F("="));
+      DBGSerial.print((servos_still_waking_up & servo_leg_mask) ? F("-") : F("="));
       DBGSerial.print((int)(CoxaAngle[LegIndex] * SERVO_TIC_PER_DEG + SERVO_CENTER_VALUE), DEC);//must invert Right legs
       DBGSerial.print(F(" "));
       DBGSerial.print(CurrentFemurPos, DEC);
-      DBGSerial.print((servos_still_waking_up & (servo_leg_mask << 8))? F("-") : F("="));
+      DBGSerial.print((servos_still_waking_up & (servo_leg_mask << 8)) ? F("-") : F("="));
       DBGSerial.print((int)(FemurAngle[LegIndex] * SERVO_TIC_PER_DEG + SERVO_CENTER_VALUE), DEC);
       DBGSerial.print(F(" "));
       DBGSerial.print(CurrentTibiaPos, DEC);
-      DBGSerial.print((servos_still_waking_up & (servo_leg_mask << 16))? F("-") : F("="));
+      DBGSerial.print((servos_still_waking_up & (servo_leg_mask << 16)) ? F("-") : F("="));
       DBGSerial.print((int)(TibiaAngle[LegIndex] * SERVO_TIC_PER_DEG + SERVO_CENTER_VALUE), DEC);
       DBGSerial.print(F(" _ "));
 #endif
@@ -841,7 +854,7 @@ void DynamixelServoDriver::WakeUpRoutine(void) {
       while (DBGSerial.read() != -1);
       while ((ch = DBGSerial.read()) == -1) ;
       while (DBGSerial.read() != -1);
-      if ((ch=='y') || (ch=='Y')) PosOK = true; 
+      if ((ch == 'y') || (ch == 'Y')) PosOK = true;
 #endif
       lWakeUpStartTime = millis();  // clear out time
     }
@@ -929,7 +942,7 @@ boolean DynamixelServoDriver::ProcessTerminalCommand(byte *psz, byte bLen)
     DBGSerial.println(F("Index\tID\tModel:Firm\tDelay\tPos\tAng\tVoltage\tTemp\tHW"));
     for (int i = 0; i < NUMSERVOS; i++) {
       uint32_t error_code;
-      uint32_t last_error = 0;
+      uint32_t errors[10];
       uint8_t error_count = 0;
       int servo_id = pgm_read_byte(&cPinTable[i]);
       if (servo_id == 1) servo_1_in_table = true;
@@ -939,52 +952,56 @@ boolean DynamixelServoDriver::ProcessTerminalCommand(byte *psz, byte bLen)
       DBGSerial.print(F("\t"));
       DBGSerial.print(dxl.getModelNumber(servo_id), HEX);
       if ((error_code = dxl.getLastLibErrCode())) {
-        last_error = error_code;
+        errors[error_count] = error_code;
         error_count++;
       }
       DBGSerial.print(F("\t"));
       DBGSerial.print(dxl.readControlTableItem(ControlTableItem::FIRMWARE_VERSION, servo_id), HEX);
       if ((error_code = dxl.getLastLibErrCode())) {
-        last_error = error_code;
+        errors[error_count] = error_code;
         error_count++;
       }
       DBGSerial.print(F("\t"));
       DBGSerial.print(dxl.readControlTableItem(ControlTableItem::RETURN_DELAY_TIME, servo_id), DEC);
       if ((error_code = dxl.getLastLibErrCode())) {
-        last_error = error_code;
+        errors[error_count] = error_code;
         error_count++;
       }
       DBGSerial.print(F("\t"));
       DBGSerial.print(static_cast<uint16_t>(dxl.getPresentPosition(servo_id)), DEC);
       if ((error_code = dxl.getLastLibErrCode())) {
-        last_error = error_code;
+        errors[error_count] = error_code;
         error_count++;
       }
       DBGSerial.print(F("\t"));
       DBGSerial.print(dxl.getPresentPosition(servo_id, UNIT_DEGREE), 2);
       if ((error_code = dxl.getLastLibErrCode())) {
-        last_error = error_code;
+        errors[error_count] = error_code;
         error_count++;
       }
       DBGSerial.print(F("\t"));
       DBGSerial.print(dxl.readControlTableItem(ControlTableItem::PRESENT_VOLTAGE, servo_id), DEC);
       if ((error_code = dxl.getLastLibErrCode())) {
-        last_error = error_code;
+        errors[error_count] = error_code;
         error_count++;
       }
       DBGSerial.print(F("\t"));
       DBGSerial.print(dxl.readControlTableItem( ControlTableItem::PRESENT_TEMPERATURE, servo_id), DEC);
       if ((error_code = dxl.getLastLibErrCode())) {
-        last_error = error_code;
+        errors[error_count] = error_code;
         error_count++;
       }
       DBGSerial.print(F("\t"));
       DBGSerial.print(dxl.getLastStatusPacketError(), HEX);
 
       DBGSerial.print(F("\t"));
-      DBGSerial.print(last_error, HEX);
+      DBGSerial.print(error_count, DEC);
       DBGSerial.print(F(":"));
-      DBGSerial.println(error_count, DEC);
+      for (uint8_t i = 0; i < error_count; i++) {
+        DBGSerial.print(errors[i], HEX);
+        DBGSerial.print(" ");
+      }
+      DBGSerial.println();        
       delay(25);
     }
     if (!servo_1_in_table) {

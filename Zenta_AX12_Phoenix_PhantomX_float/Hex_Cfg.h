@@ -235,6 +235,8 @@
 #define XBeeSerial Serial3
 #elif defined(ARDUINO_OpenCM904)
 #define XBeeSerial Serial2
+#elif defined(ARDUINO_SAMD_MKRZERO)
+#define XBeeSerial Serial2
 #else
 #if defined(UBRR2H)
 #define XBeeSerial Serial2
@@ -253,6 +255,8 @@
 #define USER 13
 #elif defined(ARDUINO_OpenCM904)
 #define USER 14
+#elif defined(ARDUINO_SAMD_MKRZERO)
+#define USER LED_BUILTIN
 
 #else
 #define SOUND_PIN    1 //0xff        // Tell system we have no IO pin...
