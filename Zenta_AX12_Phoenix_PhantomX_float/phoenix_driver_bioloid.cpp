@@ -1044,14 +1044,14 @@ void DynamixelServoDriver::TCWiggleServo(byte *psz)
 
   target_pos = SERVO_CENTER_VALUE + (45 * SERVO_TIC_PER_DEG);
   DBGSerial.print("Target: "); DBGSerial.print(target_pos, 1); 
-  DBGSerial.print(" delta: "); DBGSerial.println(target_delta, 3);
+  DBGSerial.println(" delta: 1"); 
 
   // Quick and dirty.
   while (servo_pos < target_pos) {
-    servo_pos += target_delta;
+    servo_pos += 1;
     if (servo_pos > target_pos) servo_pos = target_pos;
     dxl.setGoalPosition(servo_id, servo_pos);
-    delay(10);
+    delay(2);
   };
 
   target_pos = SERVO_CENTER_VALUE;
