@@ -35,7 +35,7 @@
 
 //[CONSTANTS]
 enum {
-  WALKMODE=0, TRANSLATEMODE, ROTATEMODE, //Only two modes, walk and single leg
+  WALKMODE=0, //TRANSLATEMODE, ROTATEMODE, //Only two modes, walk and single leg
 #ifdef OPT_SINGLELEG      
   SINGLELEGMODE, 
 #endif
@@ -261,11 +261,13 @@ void CommanderInputController::ControlInput(void)
 
 			//Stand up, sit down 
     		if ((_command.buttons & BUT_R1) && !(_buttonsPrev & BUT_R1)) {
-				if (_bodyYOffset > 0) {
-					_bodyYOffset = 0;
-					g_InhibitMovement = true;//Do not allow body movement and walking
-					strcpy(g_InControlState.DataPack, "Resting position");
-				}
+					if (_bodyYOffset > 0) {
+						_bodyYOffset = 0;
+						sLegInitXZAdjust = 0;
+						sLegInitAngleAdjust = 0;
+						g_InhibitMovement = true; //Do not allow body movement and walking
+						strcpy(g_InControlState.DataPack, "Resting position");
+					}
 				else {
 					//in other this is set to 32
 					_bodyYOffset = 80;//Zenta a little higher for avoiding the out of range issue on a symmetric MKI PhanomX
@@ -286,7 +288,7 @@ void CommanderInputController::ControlInput(void)
 			// which give an idea, but only for those whoes robot has a speaker
 			//int lx = _command.leftH;  just a note to self
 			//int ly = _command.leftV;
-
+/*   L6 button
 			if (_command.buttons & BUT_L6 ) {
 			  // raise or lower the robot on the joystick up /down
 			  // Maybe should have Min/Max
@@ -318,7 +320,9 @@ void CommanderInputController::ControlInput(void)
 				
 			  _command.rightH = 0; // don't walk when adjusting the speed here...
 			}
-			
+*/
+
+
 #ifdef DBGSerial
 			if ((_command.buttons & BUT_R3) && !(_buttonsPrev & BUT_R3)) {
 			  MSound(1, 50, 2000);
@@ -367,12 +371,12 @@ void CommanderInputController::ControlInput(void)
 				}
 
 				//uses same joystick controls as the PS4.
-				if (_RtopStickWalkMode){//Body translation
+				if (_RtopStickWalkMode){ //Body translation
 					g_InControlState.BodyPos.x = SmoothControl(((_command.rightH) * 2 / 3), g_InControlState.BodyPos.x, SmDiv);
 					_bodyZShift = SmoothControl(((_command.leftV) * 2 / 3), _bodyZShift, SmDiv);
 					_bodyYShift = SmoothControl(((_command.rightV) * 2), _bodyYShift, SmDiv);
 				}
-				else{//Default body rotation
+				else{ //Default body rotation
 					g_InControlState.BodyRot1.x = SmoothControl((_command.rightV) * 2, g_InControlState.BodyRot1.x, SmDiv);//g_InControlState.BodyRot1.x = (_command.rightV) * 2;//Zenta *2
 					g_InControlState.BodyRot1.y = SmoothControl((_command.leftV) * 3, g_InControlState.BodyRot1.y, SmDiv);//g_InControlState.BodyRot1.y = (_command.rightT) * 2;
 					g_InControlState.BodyRot1.z = SmoothControl((-_command.rightH) * 2, g_InControlState.BodyRot1.z, SmDiv);//g_InControlState.BodyRot1.z = (-_command.rightH) * 2;//Zenta, *2
@@ -399,9 +403,9 @@ void CommanderInputController::ControlInput(void)
 				if (gait_changed) {
 					//strcpy_P(g_InControlState.DataPack, (char*)pgm_read_word(&(Gait_table[Index])));
 					SetControllerMsg(1, (const char *)Gait_table[g_InControlState.GaitType]);
-							g_InControlState.DataMode = 1;
-							g_InControlState.lWhenWeLastSetDatamode = millis();
-							MSound(1, 50, 2000);
+					g_InControlState.DataMode = 1;
+					g_InControlState.lWhenWeLastSetDatamode = millis();
+					MSound(1, 50, 2000);
 				}
 	
 				//Toogle dampen down speed. Might run this permanently?
@@ -418,7 +422,6 @@ void CommanderInputController::ControlInput(void)
 					g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
 					g_InControlState.lWhenWeLastSetDatamode = millis();
 				}
-
 
 				// Switch between Walking and Body translation using Left Top joystick button
 				if ((_command.buttons & BUT_LT) && !(_buttonsPrev & BUT_LT)) {
@@ -454,11 +457,13 @@ void CommanderInputController::ControlInput(void)
 					g_InControlState.TravelLength.z = (float)(-(int)_command.leftV) * 5 / 7;//Left Stick Up/Down about +/- 90mm
 					g_InControlState.TravelLength.y = (float)(-_command.rightH) / 5;//Left Stick Top Pot /5
 #endif
-						//Calculate walking time delay
-				    g_InControlState.InputTimeDelay = 128 - max(max(abs(_command.rightH), abs(_command.rightV)), abs(_command.rightH));
+					//Calculate walking time delay
+					g_InControlState.InputTimeDelay = 128 - max(max(abs(_command.rightH), abs(_command.rightV)), abs(_command.rightH));
 				}
 			}
 
+
+/*
 			_bodyYShift = 0;
 
 			if (_controlMode == TRANSLATEMODE) {
@@ -479,7 +484,7 @@ void CommanderInputController::ControlInput(void)
 				g_InControlState.BodyRot1.z = (_command.leftH);
 				_bodyYShift = (-(_command.rightV-127) / 2); //Zenta Should be -127 or just replace with ry
 			}
-
+*/
 			//[Single leg functions]
 #ifdef OPT_SINGLELEG      
 			if (_controlMode == SINGLELEGMODE) {
