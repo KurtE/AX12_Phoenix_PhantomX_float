@@ -89,6 +89,8 @@ private:
   void TCTrackServos();
   void TCTestServos();
   void TCWiggleServo(byte *psz);
+  void TCSetAllServoToCenter();
+  void TCSetFreeAllServos();
   
   void SetRegOnAllServos(uint8_t bReg, int32_t bVal, bool checkStatusErrors=false);
   void SetRegOnAllServos2(uint8_t bReg, int32_t wVal, bool checkStatusErrors=false) {SetRegOnAllServos(bReg, wVal, checkStatusErrors);}

@@ -901,6 +901,8 @@ void DynamixelServoDriver::ShowTerminalCommandList(void)
   DBGSerial.println(F("A - Toggle AX12 speed control"));
   DBGSerial.println(F("T - Test Servos"));
   DBGSerial.println(F("W<ID> - Wiggle servo ID... "));
+  DBGSerial.println(F("C - Set all servos to Center"));
+  DBGSerial.println(F("R - Free all servos"));
   DBGSerial.println(F("I - Set Id <frm> <to"));
   DBGSerial.println(F("S - Track Servos"));
 #ifdef OPT_PYPOSE
@@ -942,6 +944,12 @@ boolean DynamixelServoDriver::ProcessTerminalCommand(byte *psz, byte bLen)
   }
   if ((*psz == 'w') || (*psz == 'W')) {
     TCWiggleServo(++psz);
+  }
+  if ((*psz == 'c') || (*psz == 'C')) {
+    TCSetAllServoToCenter();
+  }
+  if ((*psz == 'r') || (*psz == 'R')) {
+    TCSetFreeAllServos();
   }
 
   if ((*psz == 'i') || (*psz == 'I')) {
@@ -1065,6 +1073,38 @@ void DynamixelServoDriver::TCWiggleServo(byte *psz)
   };
 }
 
+//==============================================================================
+// TCSetAllServoToCenter - Move all servos to 0... 
+//==============================================================================
+void DynamixelServoDriver::TCSetAllServoToCenter() 
+{
+  SetRegOnAllServos(ControlTableItem::TORQUE_ENABLE, 1, true);  // Use sync write to do it. Maybe reset as well
+  SetRegOnAllServos2(ControlTableItem::TORQUE_LIMIT, 256);//Start with very low torque
+  bioloid.readPose();
+
+  for (int i = 0; i < NUMSERVOS; i++) {
+    byte servo_id = pgm_read_byte(&cPinTable[i]);
+    bioloid.setNextPose(servo_id, SERVO_CENTER_VALUE);
+  }
+  bioloid.interpolateSetup(500); // Half second.
+  uint32_t start_time = millis();
+  while (((millis()-start_time) < 1000) && (bioloid.interpolateStep(true) != 0x7fff)) yield();
+  SetRegOnAllServos2(ControlTableItem::TORQUE_LIMIT, 1023);// Set full torque
+  DBGSerial.println(F("All servos should be at their center point"));
+
+}
+
+//==============================================================================
+// TCTestServos - Free all of the servos
+//==============================================================================
+void DynamixelServoDriver::TCSetFreeAllServos()
+{
+  SetRegOnAllServos2(ControlTableItem::TORQUE_LIMIT, 50);  // reduce to real slow...
+  delay(250);                               //Then a short break until turning off torque
+  SetRegOnAllServos(ControlTableItem::TORQUE_ENABLE, 0);  // do this as one statement...
+  _fServosFree = true;
+  DBGSerial.println(F("(FreeServos)---> Servos Are Free"));
+}
 
 //==============================================================================
 // TCTestServos - Enum all of the Hexapod servos and show register details
