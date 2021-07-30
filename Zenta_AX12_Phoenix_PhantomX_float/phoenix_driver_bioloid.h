@@ -16,6 +16,9 @@
 // This file assumes that the main source file either directly or through include
 // file has defined all of the configuration information for the specific robot.
 // Each robot will also need to include:
+//
+// This library now uses the Robotis library: Dynamixel2Arduino, which you
+// can install through the Arduino library install or from  github
 //  
 //=============================================================================
 //
@@ -29,7 +32,7 @@
 #include "phoenix_float.h"
 #include "Hex_Cfg.h"
 
-#define USE_AX12_SPEED_CONTROL   // Experiment to see if the speed control works well enough...
+//#define USE_AX12_SPEED_CONTROL   // Experiment to see if the speed control works well enough...
 
 //==============================================================================
 //==============================================================================
@@ -84,14 +87,19 @@ private:
   void MakeSureServosAreOn(void);
   void TCSetServoID(byte *psz);
   void TCTrackServos();
-  void SetRegOnAllServos(uint8_t bReg, uint8_t bVal);
-  void SetRegOnAllServos2(uint8_t bReg, uint16_t wVal);
+  void TCTestServos();
+  void TCWiggleServo(byte *psz);
+  void TCSetAllServoToCenter();
+  void TCSetFreeAllServos();
+  
+  void SetRegOnAllServos(uint8_t bReg, int32_t bVal, bool checkStatusErrors=false);
+  void SetRegOnAllServos2(uint8_t bReg, int32_t wVal, bool checkStatusErrors=false) {SetRegOnAllServos(bReg, wVal, checkStatusErrors);}
 
  boolean _fServosFree;    // Are the servos in a free state?
+  boolean   _fAXSpeedControl;      // flag to know which way we are doing output...
  
 #ifdef USE_AX12_SPEED_CONTROL
 // Current positions in AX coordinates
-  boolean   _fAXSpeedControl;      // flag to know which way we are doing output...
   word      _awCurAXPos[NUMSERVOS];
   word      _awGoalAXPos[NUMSERVOS];
 #endif

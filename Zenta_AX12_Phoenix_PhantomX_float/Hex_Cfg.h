@@ -19,7 +19,11 @@
 // Define which Robot we are building for
 //==================================================================================================================================
 //#define MXPhoenix //setup for my MX64/106 based hexapod
+#if defined(ARDUINO_OpenCM904)
+#define MKIV_XL430 // Setup for the PhantomX MK4  XL430-W250 base hexapod
+#else
 #define MKIII_AX12 //Setup for the PhantomX MKIII AX-12 based hexapod
+#endif
 //#define MKI_AX18 //Setup for the PhantomX MKI symmetric with orientation sensor
 
 //==================================================================================================================================
@@ -28,12 +32,21 @@
 //
 //  If this is not defined, The included Controller should simply implement the InputController Class...
 //==================================================================================================================================
-#define USE_USB_JOYSTICK
-#define USE_BT_KEYPAD
-#define BLUETOOTH   // Enable the Bluetooth code in the USB joystick.
+#if defined(ARDUINO_OpenCM904)
+#define USE_COMMANDER  // Use the XBee Commander code. 
+#define COMMANDER_USE_TIMER 16000 // time in US... 
+#else 
 
-//#define USE_COMMANDER  // Use the XBee Commander code.
+//#define USE_USB_JOYSTICK
+//#define USE_BT_KEYPAD
+//#define BLUETOOTH   // Enable the Bluetooth code in the USB joystick.
+
+#define USE_COMMANDER  // Use the XBee Commander code.
+#define COMMANDER_USE_TIMER 16000 // time in US... 
+
 //#define_USE_DIY_COMMANDER 
+
+#endif
 
 //==================================================================================================================================
 // Define Which Servo Controller code to use
@@ -49,9 +62,38 @@
 #endif
 
 #if defined(KINETISK) || defined(KINETISL) || defined(__IMXRT1062__)
-#define DXL_SERIAL (HardwareSerial*)&Serial1
+#if defined(ARDUINO_TEENSY31)
+#define DXL_SERIAL Serial3 // Old through hole board test...
+#else
+#define DXL_SERIAL Serial1
+#endif
+
 #define DXL_DIR_PIN -1 // 2 - 
+#define DXL_BAUD 1000000 
+#define DXL_SERVO_COUNT 18
 #endif    
+
+#if defined(ARDUINO_OpenCM904)
+#define DXL_SERIAL Serial1
+#define DXL_DIR_PIN  28  // 22 if expansion Serial3//OpenCM9.04 EXP Board's DIR PIN. (28 for the DXL port on the OpenCM 9.04 board)
+#define DXL_BAUD 1000000 
+#define DXL_SERVO_COUNT 18
+#endif
+#if defined(ARDUINO_SAMD_MKRZERO)
+#define DXL_SERIAL Serial1
+#define DXL_DIR_PIN  A6
+#define DXL_BAUD 1000000 
+#define DXL_SERVO_COUNT 18
+#endif
+
+
+#ifdef MKIV_XL430
+#define DYNAMIXEL_PROTOCOL  2
+#define GOAL_POSITION_REG 116
+#else
+#define DYNAMIXEL_PROTOCOL  1
+#endif
+
 
 //==================================================================================================================================
 // Details for the different options above. 
@@ -79,6 +121,18 @@
 #define cFemurHornOffset1 -140 //- 14 deg
 #define cTibiaHornOffset1 580 //+ 58 deg due to how the MKIII is mounted ref. Trossen assembly instruction
 //#define UseFootSensors //bug bug not installed, must disable
+#endif
+
+#ifdef MKIV_XL430
+#define ServoRes 4096
+#define VoltRef 1021
+//MIN MAX control definitions:
+#define MaxLegLiftHeight 120
+#define MedHighLegLiftHeight 90
+#define MedLegLiftHeight 60
+#define MinLegLiftHeight 40
+#define cFemurHornOffset1 -140 //- 14 deg
+#define cTibiaHornOffset1 580 //+ 58 deg due to how the MKIII is mounted ref. Trossen assembly instruction
 #endif
 
 #ifdef MKI_AX18 //I'm using PhantomX MKI AX based robot
@@ -131,7 +185,7 @@
 #define cLFTibiaInv 1 
 #endif
 
-#ifdef MKIII_AX12 //Compared to the PhantomX MKI the Tibia must be reversed
+#if defined(MKIII_AX12) || defined(MKIV_XL430) //Compared to the PhantomX MKI the Tibia must be reversed
 #define cRRTibiaInv 0 
 #define cRMTibiaInv 0 
 #define cRFTibiaInv 0 
@@ -145,7 +199,7 @@
 #ifdef DBGSerial
 #define OPT_TERMINAL_MONITOR 
 #define OPT_TERMINAL_MONITOR_IC    // Allow the input controller to define stuff as well
-#define OPT_FIND_SERVO_OFFSETS    // Only useful if terminal monitor is enabled
+//#define OPT_FIND_SERVO_OFFSETS    // Only useful if terminal monitor is enabled
 //#define OPT_PYPOSE
 #endif
 
@@ -175,8 +229,14 @@
 //====================================================================
 // XBEE on non mega???
 //#if defined(__MK20DX256__)
-#if defined(KINETISK)  || defined(__IMXRT1062__)
+#if defined(ARDUINO_TEENSY31)
+#define XBeeSerial Serial1  // Old through hole board...
+#elif defined(KINETISK)  || defined(__IMXRT1062__)
 #define XBeeSerial Serial3
+#elif defined(ARDUINO_OpenCM904)
+#define XBeeSerial Serial2
+#elif defined(ARDUINO_SAMD_MKRZERO)
+#define XBeeSerial Serial2
 #else
 #if defined(UBRR2H)
 #define XBeeSerial Serial2
@@ -185,11 +245,19 @@
 #endif
 #define XBEE_BAUD        38400
 //--------------------------------------------------------------------
-//[Arbotix Pin Numbers]
+//[Processor Pin Numbers]
 //#if defined(__MK20DX256__)
-#if defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__) || defined(__IMXRT1062__)
+#if defined(ARDUINO_TEENSY31)
+#define SOUND_PIN 6
+#define USER 13
+#elif defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__) || defined(__IMXRT1062__)
 #define SOUND_PIN    36
 #define USER 13
+#elif defined(ARDUINO_OpenCM904)
+#define USER 14
+#elif defined(ARDUINO_SAMD_MKRZERO)
+#define USER LED_BUILTIN
+
 #else
 #define SOUND_PIN    1 //0xff        // Tell system we have no IO pin...
 #define USER 0                        // defaults to 13 but Arbotix on 0...
@@ -197,13 +265,21 @@
 
 // Define Analog pin and minimum voltage that we will allow the servos to run
 //#if defined(__MK20DX256__)
-#if defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__) || defined(__IMXRT1062__)
+#if defined(ARDUINO_TEENSY31)
+#define cVoltagePin  A10
+#define CVADR1      402  // VD Resistor 1 - reduced as only need ratio... 40.2K and 10K
+#define CVADR2      100    // VD Resistor 2
+#define CVREF       330    // 3.3v
+
+#elif defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__) || defined(__IMXRT1062__)
 // Our Teensy board
 #define cVoltagePin  23
 
 #define CVADR1      402  // VD Resistor 1 - reduced as only need ratio... 40.2K and 10K
 #define CVADR2      100    // VD Resistor 2
 #define CVREF       330    // 3.3v
+#elif defined(ARDUINO_OpenCM904)
+
 #endif
 //#define cVoltagePin  7      // Use our Analog pin jumper here...
 //#define CVADR1      1000  // VD Resistor 1 - reduced as only need ratio... 20K and 4.66K
@@ -301,6 +377,15 @@
 #define cXXFemurMax			100	
 #define cXXCoxaMin		-75
 #define cXXCoxaMax		75
+#endif
+
+#ifdef MKIV_XL430 
+#define cXXTibiaMin1    -150
+#define cXXTibiaMax1    150
+#define cXXFemurMin     -100
+#define cXXFemurMax     100 
+#define cXXCoxaMin    -75
+#define cXXCoxaMax    75
 #endif
 
 
@@ -424,6 +509,12 @@
 #define cXXTibiaLength    131
 #endif
 
+#ifdef MKIV_XL430
+#define cXXCoxaLength     53
+#define cXXFemurLength    66
+#define cXXTibiaLength    131
+#endif
+
 #ifdef PER_LEG_LENGTHS
 #define cRRCoxaLength     cXXCoxaLength	    //Right Rear leg
 #define cRRFemurLength    cXXFemurLength
@@ -539,6 +630,32 @@
 #define cLFOffsetZ      -120    //Distance Z from center of the body to the Left Front coxa
 #endif
 
+#ifdef MKIV_XL430
+#define cRRCoxaAngle   -45   //Default Coxa setup angle, decimals = 1
+#define cRMCoxaAngle    0      //Default Coxa setup angle, decimals = 1
+#define cRFCoxaAngle    45      //Default Coxa setup angle, decimals = 1
+#define cLRCoxaAngle    -45   //Default Coxa setup angle, decimals = 1
+#define cLMCoxaAngle    0      //Default Coxa setup angle, decimals = 1
+#define cLFCoxaAngle    45      //Default Coxa setup angle, decimals = 1
+
+#define cRROffsetX      -60     //Distance X from center of the body to the Right Rear coxa
+#define cRROffsetZ      120     //Distance Z from center of the body to the Right Rear coxa
+
+#define cRMOffsetX      -100    //Distance X from center of the body to the Right Middle coxa
+#define cRMOffsetZ      0       //Distance Z from center of the body to the Right Middle coxa
+
+#define cRFOffsetX      -60     //Distance X from center of the body to the Right Front coxa
+#define cRFOffsetZ      -120    //Distance Z from center of the body to the Right Front coxa
+
+#define cLROffsetX      60      //Distance X from center of the body to the Left Rear coxa
+#define cLROffsetZ      120     //Distance Z from center of the body to the Left Rear coxa
+
+#define cLMOffsetX      100     //Distance X from center of the body to the Left Middle coxa
+#define cLMOffsetZ      0       //Distance Z from center of the body to the Left Middle coxa
+
+#define cLFOffsetX      60      //Distance X from center of the body to the Left Front coxa
+#define cLFOffsetZ      -120    //Distance Z from center of the body to the Left Front coxa
+#endif
 
 //--------------------------------------------------------------------
 //[START POSITIONS FEET]
@@ -555,6 +672,14 @@
 #define CHexInitXZCos60  113       // COS(45) = .707
 #define CHexInitXZSin60  113    // sin(45) = .707
 #define CHexInitY	 25 //30
+#define cHexGroundPos 23 //bug bug no sensors used here yet
+#endif
+
+#ifdef MKIV_XL430
+#define cHexInitXZ   160
+#define CHexInitXZCos60  113       // COS(45) = .707
+#define CHexInitXZSin60  113    // sin(45) = .707
+#define CHexInitY  25 //30
 #define cHexGroundPos 23 //bug bug no sensors used here yet
 #endif
 
