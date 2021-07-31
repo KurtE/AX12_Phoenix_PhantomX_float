@@ -1,6 +1,3 @@
-#include <ax12Serial.h>
-#include <BioloidSerial.h>
-
 
 // Warning setup to build for standard hexapod or for quad.
 //  #define QUADMODE  
@@ -14,7 +11,6 @@
 //   Kåre Halvorsen aka Zenta - Makes everything work correctly!     
 //
 // This version of the Phoenix code was ported over to the Arduino Environement
-// and is specifically configured for the Arbotix Robocontroller board
 //
 //=============================================================================
 // Warning:: This configuration does not check voltages, so you should be careful to
@@ -32,7 +28,7 @@
 
 #define DEFINE_HEX_GLOBALS
 #include <Arduino.h>
-#include <EEPROM.h>
+//#include <EEPROM.h>
 #include <avr\pgmspace.h>
 #include "Hex_Cfg.h"
 
