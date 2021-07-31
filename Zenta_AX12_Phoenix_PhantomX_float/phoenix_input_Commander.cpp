@@ -160,6 +160,13 @@ private:
 // Global - Local to this file only...
 //=============================================================================
 		Commander _command = Commander();
+#if defined(ARDUINO_SAMD_MKRZERO)
+#include "wiring_private.h"
+// Serial2 pin and pad definitions (in Arduino files Variant.h & Variant.cpp)
+// Instantiate the Serial2 class
+Uart Serial2(&sercom3, 1, 0, SERCOM_RX_PAD_1, UART_TX_PAD_0);
+
+#endif
 
 // some external or forward function references.
 
@@ -207,7 +214,7 @@ void CommanderInputController::Init(void)
 // do a lot of bit-bang outputs and it would like us to minimize any interrupts
 // that we do while it is active...
 //==============================================================================
-void CommanderInputController::AllowControllerInterrupts(boolean fAllow)
+void CommanderInputController::AllowControllerInterrupts(__attribute__((unused))boolean fAllow)
 {
   // We don't need to do anything...
 }
@@ -718,7 +725,12 @@ Commander::Commander(){
 void Commander::begin(unsigned long baud){
   char ab[10];
   // Sometimes when we power up the XBee comes up at 9600 in _command mode
-  // There is an OK<cr>.  So check for this and try to exit
+#if defined(ARDUINO_SAMD_MKRZERO)
+  // not sure best before or after. 
+  pinPeripheral(1, PIO_SERCOM); //Assign RX function to pin 1
+  pinPeripheral(0, PIO_SERCOM); //Assign TX function to pin 0
+  DBGSerial.println("After pinPeripeheral"); DBGSerial.flush();  // There is an OK<cr>.  So check for this and try to exit
+#endif
 #ifdef NOT_SURE_WHY_NEEDED_SOMETIMES
   XBeeSerial.begin(9600);  
   XBeeSerial.println(F("ATCN"));  // Tell it to bail quickly
@@ -738,6 +750,12 @@ void Commander::begin(unsigned long baud){
   XBeeSerial.setTimeout(20);  // give a little extra time
   if (XBeeSerial.readBytesUntil('\r', ab, 10) > 0) {
     // Ok we entered _command mode, lets print out a few things about the XBee
+    DBGSerial.println("Try XB BAUD succeeded"); DBGSerial.flush();
+    PrintXBeeIDInfo("MY");
+    PrintXBeeIDInfo("DL");
+    PrintXBeeIDInfo("ID");
+    PrintXBeeIDInfo("EA");
+    PrintXBeeIDInfo("EC");
     XBeeSerial.println(F("ATCN"));	          // and exit _command mode
     return;  // bail out quick
   }
@@ -796,6 +814,13 @@ void Commander::begin(unsigned long baud){
 #endif  
 
 }
+
+#if defined(ARDUINO_SAMD_MKRZERO)
+void SERCOM3_Handler()
+{
+ Serial2.IrqHandler();
+}
+#endif
 
 //==============================================================================
 // ReadMsgs
@@ -870,7 +895,9 @@ int Commander::ReadMsgs(){
 bool CommanderInputController::SendMsgs(byte Voltage, byte CMD, char Data[21]){
 #ifdef DBGSerial
 	if (CMD) {
-		DBGSerial.printf("%u %u:%s\n", Voltage, CMD, Data);
+    DBGSerial.print(Voltage, DEC);
+    DBGSerial.print(" "); DBGSerial.print(CMD, DEC);
+    DBGSerial.print(":"); DBGSerial.println(Data);
 	}
 #endif
 	// TODO, output to optional display
