@@ -145,6 +145,9 @@ extern void FindServoOffsets();
 
 #if defined(ARDUINO_OpenCM904)
 extern void printMemoryUsage();
+// OpenCM may not have vield
+void yield() {}
+
 #else
 void printMemoryUsage() {}
 #endif
@@ -155,6 +158,16 @@ void printMemoryUsage() {}
 void DynamixelServoDriver::Init(void) {
 #ifdef DBGSerial
   DBGSerial.println("At start of DynamixelServoDriver::Init");
+#endif
+#ifdef DXL_ENABLE_PIN 
+  // More later
+
+  pinMode(DXL_ENABLE_PIN, OUTPUT);
+  digitalWriteFast(DXL_ENABLE_PIN, HIGH);
+#ifdef DBGSerial
+  DBGSerial.print("Turn on Servo Power pin: ");
+  DBGSerial.println(DXL_ENABLE_PIN, DEC);
+#endif
 #endif
   printMemoryUsage();
   // First lets get the actual servo positions for all of our servos...
@@ -1129,7 +1142,7 @@ void DynamixelServoDriver::TCTestServos()
       errors[error_count] = error_code;
       error_count++;
     }
-    DBGSerial.print(F("\t"));
+    DBGSerial.print(F(":"));
     DBGSerial.print(dxl.readControlTableItem(ControlTableItem::FIRMWARE_VERSION, servo_id), HEX);
     if ((error_code = dxl.getLastLibErrCode())) {
       errors[error_count] = error_code;

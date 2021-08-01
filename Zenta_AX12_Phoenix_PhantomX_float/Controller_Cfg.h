@@ -66,9 +66,14 @@
 #define DXL_SERIAL Serial3 // Old through hole board test...
 #else
 #define DXL_SERIAL Serial1
+#define DXL_DIR_PIN 2
+#define DXL_ENABLE_PIN 3
 #endif
 
+#ifndef DXL_DIR_PIN
 #define DXL_DIR_PIN -1 // 2 - 
+#endif
+
 #define DXL_BAUD 1000000 
 #define DXL_SERVO_COUNT 18
 #endif    
