@@ -57,7 +57,7 @@
 #if defined(USE_USB_SERIAL_DXL)
   #if defined(__IMXRT1062__) || defined(ARDUINO_TEENSY36)
   #else
-	#undef USE_USB_SERIAL_DXL
+  #undef USE_USB_SERIAL_DXL
   #endif
 #endif
 
@@ -66,9 +66,14 @@
 #define DXL_SERIAL Serial3 // Old through hole board test...
 #else
 #define DXL_SERIAL Serial1
+#define DXL_DIR_PIN 2
+#define DXL_ENABLE_PIN 3
 #endif
 
+#ifndef DXL_DIR_PIN
 #define DXL_DIR_PIN -1 // 2 - 
+#endif
+
 #define DXL_BAUD 1000000 
 #define DXL_SERVO_COUNT 18
 #endif    
@@ -199,7 +204,7 @@
 //#define CVADR2      233   // VD Resistor 2
 
 //#define cTurnOffVol  1095     // 10,95v (3,65v per cell)
-//#define cWarningVolt 1104			// 11,04v (3,68v per cell)
+//#define cWarningVolt 1104     // 11,04v (3,68v per cell)
 //#define cTurnOnVol   1150     // 11V - optional part to say if voltage goes back up, turn it back on...
 
 //====================================================================

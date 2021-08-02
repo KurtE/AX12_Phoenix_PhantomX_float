@@ -295,7 +295,7 @@ void CommanderInputController::ControlInput(void)
 			// which give an idea, but only for those whoes robot has a speaker
 			//int lx = _command.leftH;  just a note to self
 			//int ly = _command.leftV;
-/*   L6 button
+//   L6 button
 			if (_command.buttons & BUT_L6 ) {
 			  // raise or lower the robot on the joystick up /down
 			  // Maybe should have Min/Max
@@ -327,11 +327,10 @@ void CommanderInputController::ControlInput(void)
 				
 			  _command.rightH = 0; // don't walk when adjusting the speed here...
 			}  //end but_l6
-*/
 
 
 #ifdef DBGSerial
-			if ((_command.buttons & BUT_R3) && !(_buttonsPrev & BUT_R3)) {
+			if ((_command.buttons & BUT_LT) && !(_buttonsPrev & BUT_LT)) {
 			  MSound(1, 50, 2000);
 			  g_fDebugOutput = !g_fDebugOutput;
 			} //end but_R3 - BUGBUG - dup to mode control.
