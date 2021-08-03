@@ -64,6 +64,11 @@ CommanderInputController commander;
 ST7XXNotification stnotify(TFT_CS, TFT_DC, 11, 13, TFT_RST, TFT_BL);
 #endif
 
+#if defined(USE_SSD13XX)
+#include "phoenix_notify_ssd13xx.h"
+SSD13XXNotification ssdnotify(SSD13XX_W, SSD13XX_H, &SSD13XX_WIRE, SSD13XX_I2C_ADDR);
+#endif
+
 #include "phoenix_driver_bioloid.h"
 
 
@@ -73,6 +78,9 @@ DynamixelServoDriver dxlServo;
 void SketchSetup() {
 #if defined(USE_ST77XX)
   stnotify.Init();
+#endif
+#if defined(USE_SSD13XX)
+  ssdnotify.Init();
 #endif
 
 #if defined(USE_USB_JOYSTICK) 

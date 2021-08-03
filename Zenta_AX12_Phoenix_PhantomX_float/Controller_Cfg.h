@@ -28,7 +28,9 @@
 
 #define KITCHEN_SINK
 #if defined (KITCHEN_SINK) && defined(__IMXRT1062__)
-#define USE_ST77XX
+//#define USE_ST77XX
+#define USE_SSD13XX
+
 #ifdef USE_ST77XX
 #define TFT_ST7735_MINI
 // Lets put in option to use ST7789
@@ -41,10 +43,17 @@
 #ifdef USE_ST7789
 #include <ST7735_t3.h>
 #include <ST7789_t3.h>
-extern ST7789_t3 tft;
+//extern ST7789_t3 tft;
+#endif
 #endif
 
+#ifdef USE_SSD13XX
+#define SSD13XX_WIRE Wire
+#define SSD13XX_W 128
+#define SSD13XX_H 64
+#define SSD13XX_I2C_ADDR 0x3D
 #endif
+
 #endif
 
 

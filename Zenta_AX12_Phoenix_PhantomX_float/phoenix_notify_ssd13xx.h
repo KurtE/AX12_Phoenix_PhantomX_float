@@ -15,22 +15,24 @@
 //
 //=============================================================================
 //==============================================================================
-#ifndef _PHOENIX_NOTIFY_ST77XX_
-#define _PHOENIX_NOTIFY_ST77XX_
-#include <ST7735_t3.h>
-#include <ST7789_t3.h>
+#ifndef _PHOENIX_NOTIFY_SSD13XX_
+#define _PHOENIX_NOTIFY_SSD13XX_
 
-class ST7XXNotification: public UserNotification {
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+class SSD13XXNotification: public UserNotification {
 public:
 
 	//ST7735 Will expand to ST7789
-	ST7XXNotification(uint8_t CS, uint8_t RS, uint8_t SID, uint8_t SCLK, uint8_t RST = -1, uint8_t BL=-1);
+	SSD13XXNotification(uint8_t w, uint8_t h, TwoWire *twi = &Wire, uint8_t i2caddr=0x3d);
 
 	virtual void     Init(void) override;
 	virtual bool     notify(byte Voltage, byte CMD, char Data[21]) override;
 private:
-	uint8_t _cs, _rs, _sid, _sclk, _rst, _bl;
-	ST7789_t3 _tft;
+	uint8_t _w, _h;
+	TwoWire *_twi; 
+	uint8_t _i2caddr;
+	Adafruit_SSD1306 _tft;
 } ;
 
 

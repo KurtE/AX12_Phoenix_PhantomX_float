@@ -16,12 +16,13 @@ void ST7XXNotification::Init(void)
 	digitalWriteFast(TFT_SD_CS, HIGH);
 	#endif
 
-	DBGSerial.print("Before TFT.INITR");
+	DBGSerial.println("Before TFT.INITR");
 	// Again need to parameter 
- 	_tft.initR(INITR_MINI160x80);
+ 	//_tft.initR(INITR_MINI160x80);
+    _tft.init(135, 240);           // Init ST7789 240x135
 
 #ifdef TFT_BL
-	DBGSerial.print("Turn on Backlight");
+	DBGSerial.println("Turn on Backlight");
     pinMode(TFT_BL, OUTPUT);
     digitalWriteFast(TFT_BL, HIGH);
 #endif
