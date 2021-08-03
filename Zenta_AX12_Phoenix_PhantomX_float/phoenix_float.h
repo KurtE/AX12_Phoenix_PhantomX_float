@@ -290,6 +290,27 @@ private:
 } 
 ;   
 
+//=============================================================================
+//=============================================================================
+// Define the class(s) for our Input controllers.  
+//=============================================================================
+//=============================================================================
+class UserNotification {
+public:
+  enum {MAX_NOTIFICATIONS=2};
+  static bool addNotificationObject(UserNotification *fbo);
+  static void notifyAll(byte Voltage, byte CMD, char Data[21]);
+
+  virtual void     Init(void);
+  virtual bool     notify(byte Voltage, byte CMD, char Data[21]);
+
+private:
+  static UserNotification *s_notifys[MAX_NOTIFICATIONS];
+  static uint8_t s_cnotifys;
+} ;
+
+
+
 //==============================================================================
 //==============================================================================
 // Define global class objects
