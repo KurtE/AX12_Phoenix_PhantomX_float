@@ -939,6 +939,7 @@ void loop(void)
 
     if ((millis() - lSendDataTimer) > 30) {
       lSendDataTimer = millis();
+      if (g_InControlState.DataMode > 0) UserNotification::notifyAll(BattPst, g_InControlState.DataMode, g_InControlState.DataPack);
       bool clear_msg = InputController::controller()->SendMsgs(BattPst, g_InControlState.DataMode, g_InControlState.DataPack);//Test sending data back to remote, not sure when or where it is best to place it
       if ((g_InControlState.DataMode > 0) && (clear_msg || (millis() - g_InControlState.lWhenWeLastSetDatamode) > 300)) { //Reset Datamode after 300mS to be sure the remote got the package. bug bug
         //MSound(1, 30, 1500);
@@ -3087,8 +3088,30 @@ void UpdateInitialPosAndAngCmd(byte *pszCmdLine) {
   }
 }
 #endif
-
 #endif
+
+//=================================================================================
+// Add the static functions data for our 
+//=================================================================================
+UserNotification *UserNotification::s_notifys[MAX_NOTIFICATIONS];
+uint8_t UserNotification::s_cnotifys = 0;
+
+bool UserNotification::addNotificationObject(UserNotification *fbo) {
+  if (s_cnotifys < MAX_NOTIFICATIONS) {
+    s_notifys[s_cnotifys++] = fbo;
+    return true;
+  }
+  return false;
+}
+
+void UserNotification::notifyAll(byte Voltage, byte CMD, char Data[21]) {
+  for (uint8_t i = 0; i < s_cnotifys; i++) {
+    s_notifys[i]->notify(Voltage, CMD, Data); // right now ignoring return
+  }
+}
+
+
+
 //=================================================================================
 // Lets initialize our memory usage code, to get an idea of how much has been
 // used

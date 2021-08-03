@@ -26,6 +26,37 @@
 #endif
 //#define MKI_AX18 //Setup for the PhantomX MKI symmetric with orientation sensor
 
+#define KITCHEN_SINK
+#if defined (KITCHEN_SINK) && defined(__IMXRT1062__)
+//#define USE_ST77XX
+#define USE_SSD13XX
+
+#ifdef USE_ST77XX
+#define TFT_ST7735_MINI
+// Lets put in option to use ST7789
+#define TFT_CS    10
+#define TFT_DC    9
+#define TFT_RST   28    // Reset
+#define TFT_BL    29    // backlight
+#define TFT_SD_CS 6
+
+#ifdef USE_ST7789
+#include <ST7735_t3.h>
+#include <ST7789_t3.h>
+//extern ST7789_t3 tft;
+#endif
+#endif
+
+#ifdef USE_SSD13XX
+#define SSD13XX_WIRE Wire
+#define SSD13XX_W 128
+#define SSD13XX_H 64
+#define SSD13XX_I2C_ADDR 0x3D
+#endif
+
+#endif
+
+
 //==================================================================================================================================
 // Define which input classes we will use. If we wish to use more than one we need to define USEMULTI - This will define a forwarder
 //    type implementation, that the Inputcontroller will need to call.  There will be some negotion for which one is in contol.
