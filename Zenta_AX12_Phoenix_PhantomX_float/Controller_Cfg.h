@@ -37,14 +37,19 @@
 #define COMMANDER_USE_TIMER 16000 // time in US... 
 #else 
 
-//#define USE_USB_JOYSTICK
-//#define USE_BT_KEYPAD
-//#define BLUETOOTH   // Enable the Bluetooth code in the USB joystick.
+#define USE_USB_JOYSTICK
+#define USE_BT_KEYPAD
+#define BLUETOOTH   // Enable the Bluetooth code in the USB joystick.
 
-#define USE_COMMANDER  // Use the XBee Commander code.
+//#define USE_COMMANDER  // Use the XBee Commander code.
 //#define COMMANDER_USE_TIMER 16000 // time in US... 
 
 //#define_USE_DIY_COMMANDER 
+
+#define ESP_NOW
+#if defined(ESP_NOW)
+#define ESPserial Serial5
+#endif
 
 #endif
 

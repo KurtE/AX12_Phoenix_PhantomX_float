@@ -560,6 +560,9 @@ void setup() {
   if (CrashReport) {
     DBGSerial.print(CrashReport);
   }
+#if defined(ESP_NOW)
+  ESPserial.begin(115200);
+#endif
 #endif
 #endif
   // Init our ServoDriver

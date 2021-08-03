@@ -160,8 +160,11 @@ void USBPSXController::Init(void)
 		myusb.begin();
 		g_myusb_begun = true;		
 	}
+
+#if defined(USE_BT_KEYPAD)
 	// Do regardless if other code like servo controller beat us to initialize the USB object
 	keyboard1.attachPress(OnPress);
+#endif
 
 	GPSeq = 0;  // init to something...
 
@@ -477,7 +480,7 @@ void USBPSXController::ControlInput(void)
 					//Serial.println((const char *)Gait_table[g_InControlState.GaitType]);
 				}
 
-/// TEST BT KEYPAD
+#if defined(USE_BT_KEYPAD)
 				if ((_keypad_button >= '1') && (_keypad_button <= '4')) {
 					g_InControlState.GaitType = _keypad_button - '1';
 					gait_changed = true;
@@ -540,7 +543,7 @@ void USBPSXController::ControlInput(void)
 					_keypad_button = -1;
 				}
 
-/////END TEST BT KEYPAD
+#endif  //END TEST BT KEYPAD
 
 	
 				// Switch between Walk method 1 && Walk method 2
@@ -857,6 +860,7 @@ void USBPSXController::UpdateActiveDeviceInfo() {
 #endif
 }
 
+#if defined(USE_BT_KEYPAD)
 void USBPSXController::process_OnPress(int key)
 {
   //Serial.print("key based on getKey ");
@@ -869,7 +873,7 @@ void USBPSXController::OnPress(int key)
 	// BUGBUG hard coded name.
 	if (g_active_controller) g_active_controller->process_OnPress(key);
 }
-
+#endif
 
 //================================================================================
 #ifdef OPT_TERMINAL_MONITOR_IC
@@ -904,11 +908,15 @@ bool USBPSXController::SendMsgs(byte Voltage, byte CMD, char Data[21]) {
 		DBGSerial.printf("%u %u:%s\n", Voltage, CMD, Data);
 	}
 #endif
+#if defined(ESP_NOW)
+	if (CMD) {
+		ESPserial.printf("%u,%u,%s\n", Voltage, CMD, Data);
+	}
+#endif
 	// TODO, output to optional display
 	// Tell caller OK to clear out this message now.
 	return true;
 }
-
 
 #endif
 #endif // USE_USB_JOYSTICK
