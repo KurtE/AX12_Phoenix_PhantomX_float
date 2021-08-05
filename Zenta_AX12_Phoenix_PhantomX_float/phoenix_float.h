@@ -290,6 +290,40 @@ private:
 } 
 ;   
 
+//=============================================================================
+//=============================================================================
+// Define the class(s) for our Input controllers.  
+//=============================================================================
+//=============================================================================
+class UserNotification {
+public:
+  enum {MAX_NOTIFICATIONS=2};
+  static bool addNotificationObject(UserNotification *fbo);
+  static void notifyAll(byte Voltage, byte CMD, char Data[21]);
+  static void initAll();
+
+  virtual void     init(void);
+  virtual bool     notify(byte Voltage, byte CMD, char Data[21]);
+
+private:
+  static UserNotification *s_notifys[MAX_NOTIFICATIONS];
+  static uint8_t s_cnotifys;
+} ;
+
+class UserNotifySerial: public UserNotification {
+public:
+
+  UserNotifySerial(HardwareSerial &hws, uint32_t baud);
+  virtual void     init(void) override;
+  virtual bool     notify(byte Voltage, byte CMD, char Data[21]) override;
+private:
+  HardwareSerial *_pserial;
+  uint32_t      _baud;
+} ;
+
+
+
+
 //==============================================================================
 //==============================================================================
 // Define global class objects

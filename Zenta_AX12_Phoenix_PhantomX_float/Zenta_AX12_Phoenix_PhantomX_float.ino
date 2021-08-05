@@ -59,6 +59,14 @@ CommanderInputController commander;
 #error "No input controller defined in config file" 
 #endif
 
+#if defined(NOTIFY_SSD13XX)
+#include "phoenix_notify_ssd13xx.h"
+SSD13XXNotification ssdnotify(SSD13XX_W, SSD13XX_H, &SSD13XX_WIRE, SSD13XX_I2C_ADDR);
+#endif
+#if defined(ESP_NOW)
+UserNotifySerial espNotify(ESPserial, ESP_NOW_BAUD);
+#endif  
+
 #include "phoenix_driver_bioloid.h"
 
 
@@ -66,6 +74,7 @@ CommanderInputController commander;
 DynamixelServoDriver dxlServo;
 
 void SketchSetup() {
+
 #if defined(USE_USB_JOYSTICK) 
   InputController::controller(usbControl);
 #endif  

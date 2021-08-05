@@ -26,6 +26,20 @@
 #endif
 //#define MKI_AX18 //Setup for the PhantomX MKI symmetric with orientation sensor
 
+#define KITCHEN_SINK
+#if defined (KITCHEN_SINK) && defined(__IMXRT1062__)
+
+#define NOTIFY_SSD13XX
+
+#ifdef NOTIFY_SSD13XX
+#define SSD13XX_WIRE Wire
+#define SSD13XX_W 128
+#define SSD13XX_H 64
+#define SSD13XX_I2C_ADDR 0x3D
+#endif
+
+#endif
+
 //==================================================================================================================================
 // Define which input classes we will use. If we wish to use more than one we need to define USEMULTI - This will define a forwarder
 //    type implementation, that the Inputcontroller will need to call.  There will be some negotion for which one is in contol.
@@ -37,11 +51,11 @@
 #define COMMANDER_USE_TIMER 16000 // time in US... 
 #else 
 
-#define USE_USB_JOYSTICK
-#define USE_BT_KEYPAD
-#define BLUETOOTH   // Enable the Bluetooth code in the USB joystick.
+//#define USE_USB_JOYSTICK
+//#define USE_BT_KEYPAD
+//#define BLUETOOTH   // Enable the Bluetooth code in the USB joystick.
 
-//#define USE_COMMANDER  // Use the XBee Commander code.
+#define USE_COMMANDER  // Use the XBee Commander code.
 //#define COMMANDER_USE_TIMER 16000 // time in US... 
 
 //#define_USE_DIY_COMMANDER 
@@ -49,6 +63,7 @@
 #define ESP_NOW
 #if defined(ESP_NOW)
 #define ESPserial Serial5
+#define ESP_NOW_BAUD 115200
 #endif
 
 #endif
