@@ -48,7 +48,7 @@ enum {
 
 
 #define CONTROLLER_TO  5000        // if we don't get a valid message in this number of mills turn off
-#define cTravelDeadZone 6
+#define cTravelDeadZone 8
 
 
 //=============================================================================
@@ -553,9 +553,14 @@ void USBPSXController::ControlInput(void)
 	#else
 					if ((++_bJoystickWalkMode) > 1)
 	#endif 
-						_bJoystickWalkMode = 0;
+					_bJoystickWalkMode = 0;
 					MSound(1, 50, 2000 + _bJoystickWalkMode * 250);
-					Serial.printf("Walkmethod %d Selected ........\n", _bJoystickWalkMode );
+					DBGSerial.printf("Walkmethod %d Selected ........\n", _bJoystickWalkMode );
+					if(_bJoystickWalkMode == 0) {
+						SetControllerMsg(1, "Walkmethod 0");
+					} else {
+						SetControllerMsg(1, "Walkmethod 1");
+					}
 				}
 
 			}//Common functions end
