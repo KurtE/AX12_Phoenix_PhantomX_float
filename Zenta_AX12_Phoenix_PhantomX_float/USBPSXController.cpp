@@ -913,11 +913,11 @@ bool USBPSXController::SendMsgs(byte Voltage, byte CMD, char Data[21]) {
 		DBGSerial.printf("%u %u:%s\n", Voltage, CMD, Data);
 	}
 #endif
-#if defined(ESP_NOW)
-	if (CMD) {
-		ESPserial.printf("%u,%u,%s\n", Voltage, CMD, Data);
-	}
-#endif
+//#if defined(ESP_NOW)
+//	if (CMD) {
+//		ESPserial.printf("%u,%u,%s\n", Voltage, CMD, Data);
+//	}
+//#endif
 	// TODO, output to optional display
 	// Tell caller OK to clear out this message now.
 	return true;

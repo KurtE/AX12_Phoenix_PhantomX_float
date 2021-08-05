@@ -550,6 +550,10 @@ void setup() {
 #if defined(ARDUINO_OpenCM904)
   initMemoryUsageTest();
 #endif
+
+  // Init any notification objects
+  UserNotification::initAll();
+
   SketchSetup();
   delay(500);  // giveus some time to init
   g_fShowDebugPrompt = true;
@@ -560,9 +564,9 @@ void setup() {
   if (CrashReport) {
     DBGSerial.print(CrashReport);
   }
-#if defined(ESP_NOW)
-  ESPserial.begin(115200);
-#endif
+//#if defined(ESP_NOW)
+//  ESPserial.begin(115200);
+//#endif
 #endif
 #endif
   // Init our ServoDriver
@@ -942,6 +946,7 @@ void loop(void)
 
     if ((millis() - lSendDataTimer) > 30) {
       lSendDataTimer = millis();
+      if (g_InControlState.DataMode > 0) UserNotification::notifyAll(BattPst, g_InControlState.DataMode, g_InControlState.DataPack);
       bool clear_msg = InputController::controller()->SendMsgs(BattPst, g_InControlState.DataMode, g_InControlState.DataPack);//Test sending data back to remote, not sure when or where it is best to place it
       if ((g_InControlState.DataMode > 0) && (clear_msg || (millis() - g_InControlState.lWhenWeLastSetDatamode) > 300)) { //Reset Datamode after 300mS to be sure the remote got the package. bug bug
         //MSound(1, 30, 1500);
@@ -3092,6 +3097,55 @@ void UpdateInitialPosAndAngCmd(byte *pszCmdLine) {
 #endif
 
 #endif
+
+//=================================================================================
+// Add the static functions data for our 
+//=================================================================================
+UserNotification *UserNotification::s_notifys[MAX_NOTIFICATIONS];
+uint8_t UserNotification::s_cnotifys = 0;
+
+bool UserNotification::addNotificationObject(UserNotification *fbo) {
+  if (s_cnotifys < MAX_NOTIFICATIONS) {
+    s_notifys[s_cnotifys++] = fbo;
+    return true;
+  }
+  return false;
+}
+
+void UserNotification::initAll() {
+  for (uint8_t i = 0; i < s_cnotifys; i++) {
+    s_notifys[i]->init(); // right now ignoring return
+  }
+
+}
+
+void UserNotification::notifyAll(byte Voltage, byte CMD, char Data[21]) {
+  for (uint8_t i = 0; i < s_cnotifys; i++) {
+    s_notifys[i]->notify(Voltage, CMD, Data); // right now ignoring return
+  }
+}
+
+// Add in the generic send data to the serial port. 
+UserNotifySerial::UserNotifySerial(HardwareSerial &hws, uint32_t baud) : _pserial(&hws), _baud(baud) {
+  addNotificationObject(this);
+}
+
+
+void UserNotifySerial::init(void) {
+  _pserial->begin(_baud);
+
+}
+
+bool UserNotifySerial::notify(byte Voltage, byte CMD, char Data[21]) {
+  _pserial->print(Voltage, DEC);
+  _pserial->print(",");
+  _pserial->print(CMD, DEC);
+  _pserial->print(",");
+  _pserial->println(Data);
+  return true;
+}
+
+
 //=================================================================================
 // Lets initialize our memory usage code, to get an idea of how much has been
 // used
