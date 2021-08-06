@@ -29,7 +29,7 @@
 #define KITCHEN_SINK
 #if defined (KITCHEN_SINK) && defined(__IMXRT1062__)
 
-#define NOTIFY_SSD13XX
+//#define NOTIFY_SSD13XX
 
 #ifdef NOTIFY_SSD13XX
 #define SSD13XX_WIRE Wire
@@ -51,11 +51,11 @@
 #define COMMANDER_USE_TIMER 16000 // time in US... 
 #else 
 
-//#define USE_USB_JOYSTICK
-//#define USE_BT_KEYPAD
-//#define BLUETOOTH   // Enable the Bluetooth code in the USB joystick.
+#define USE_USB_JOYSTICK
+#define USE_BT_KEYPAD
+#define BLUETOOTH   // Enable the Bluetooth code in the USB joystick.
 
-#define USE_COMMANDER  // Use the XBee Commander code.
+//#define USE_COMMANDER  // Use the XBee Commander code.
 //#define COMMANDER_USE_TIMER 16000 // time in US... 
 
 //#define_USE_DIY_COMMANDER 

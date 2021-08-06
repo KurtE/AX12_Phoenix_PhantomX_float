@@ -49,6 +49,7 @@ enum {
 
 #define CONTROLLER_TO  5000        // if we don't get a valid message in this number of mills turn off
 #define cTravelDeadZone 8
+#define joystick_limit 84
 
 
 //=============================================================================
@@ -223,6 +224,7 @@ void USBPSXController::ControlInput(void)
 				BTN_MASKS = PS4_BTNS;
 				joystick_ps4_bt = true;
 				DBGSerial.println("      BlueTooth PS4");
+				SetControllerMsg(1, "PS4 connected!");
 			}
 
 			// lets try to reduce number of fields that update
@@ -234,10 +236,10 @@ void USBPSXController::ControlInput(void)
 		// We move each pass through this by a percentage of how far we are from center in each direction
 		// We get feedback with height by seeing the robot move up and down.  For Speed, I put in sounds
 		// which give an idea, but only for those whoes robot has a speaker
-		int lx = joystick1.getAxis(AXIS_LX) - 127;
-		int ly = joystick1.getAxis(AXIS_LY) - 127;
-		int rx = joystick1.getAxis(AXIS_RX) - 127;
-		int ry = joystick1.getAxis(AXIS_RY) - 127;
+		int lx = constrain(joystick1.getAxis(AXIS_LX) - 127, -joystick_limit, +joystick_limit);
+		int ly = constrain(joystick1.getAxis(AXIS_LY) - 127, -joystick_limit, +joystick_limit);
+		int rx = constrain(joystick1.getAxis(AXIS_RX) - 127, -joystick_limit, +joystick_limit);
+		int ry = constrain(joystick1.getAxis(AXIS_RY) - 127, -joystick_limit, +joystick_limit);
 		
 		if(abs(lx) < cTravelDeadZone) lx = 0;
 		if(abs(ly) < cTravelDeadZone) ly = 0;
@@ -287,6 +289,7 @@ void USBPSXController::ControlInput(void)
 						DBGSerial.println("  Pairing call Failed");
 					}	else {
 						DBGSerial.println("  Pairing complete (I hope), make sure Bluetooth adapter is plugged in and try PS3 without USB");
+						SetControllerMsg(1, "PS3 connected!");
 					}
 				}
 			}
@@ -296,14 +299,16 @@ void USBPSXController::ControlInput(void)
 					g_InControlState.fRobotOn = true;
 					fAdjustLegPositions = true;
 					g_WakeUpState = true;//Start the wakeup routine
-					SetControllerMsg(1, "(0)Robot Power On.....");
+          DBGSerial.println("Robot Power On.....");
+					SetControllerMsg(1, "Power On...");
 
 					//delay(10000);//Testing a bug that occour after powerup. Robot turns on and of and then on again. After programming first time it work fine. Then bug start after powerup
 					g_InControlState.ForceSlowCycleWait = 2;//Do this action slowly..
 				}
 				else {
 					controllerTurnRobotOff();
-					SetControllerMsg(1, "(0)Robot Power Off.....");
+           DBGSerial.println("Robot Power Off.....");
+					SetControllerMsg(1, "Power Off...");
 				}
 			}
 		}
@@ -312,6 +317,7 @@ void USBPSXController::ControlInput(void)
 				if (!g_InControlState.fRobotOn) {
 					g_InControlState.fRobotOn = true;
 					fAdjustLegPositions = true;
+          DBGSerial.println("Robot Power On.....");
 					SetControllerMsg(1, "Robot Power On.....");
 					g_WakeUpState = true;//Start the wakeup routine
 
@@ -320,6 +326,7 @@ void USBPSXController::ControlInput(void)
 				}
 				else {
 					controllerTurnRobotOff();
+          DBGSerial.println("Robot Power Off.....");
 					SetControllerMsg(1, "Robot Power Off.....");
 				}
 		}
@@ -477,7 +484,7 @@ void USBPSXController::ControlInput(void)
 				if (gait_changed) {
 					//strcpy_P(g_InControlState.DataPack, (char*)pgm_read_word(&(Gait_table[Index])));
 					SetControllerMsg(1, (const char *)Gait_table[g_InControlState.GaitType]);
-					//Serial.println((const char *)Gait_table[g_InControlState.GaitType]);
+					DBGSerial.println((const char *)Gait_table[g_InControlState.GaitType]);
 				}
 
 #if defined(USE_BT_KEYPAD)
@@ -485,7 +492,7 @@ void USBPSXController::ControlInput(void)
 					g_InControlState.GaitType = _keypad_button - '1';
 					gait_changed = true;
 					MSound(1, 50, 2000);
-					//Serial.printf("Gait Type #: %d\n", g_InControlState.GaitType );
+					//DBGSerial.printf("Gait Type #: %d\n", g_InControlState.GaitType );
 					_keypad_button = -1;
 				}
 				if (gait_changed) {
@@ -493,7 +500,8 @@ void USBPSXController::ControlInput(void)
 					strcpy(g_InControlState.DataPack, (const char *)Gait_table[g_InControlState.GaitType]);
 					g_InControlState.DataMode = 1;
 					g_InControlState.lWhenWeLastSetDatamode = millis();
-					//Serial.printf("Gait Selected: %s\n", (const char *)Gait_table[g_InControlState.GaitType]) ;
+					DBGSerial.printf("Gait Selected: %s\n", (const char *)Gait_table[g_InControlState.GaitType]) ;
+					SetControllerMsg(1, (const char *)Gait_table[g_InControlState.GaitType]) ;
 				}
 
 				// Was 7 on Zentas....
@@ -502,19 +510,22 @@ void USBPSXController::ControlInput(void)
 						SmDiv = 1;
 						MSound(1, 50, 1000);
 						strcpy(g_InControlState.DataPack, "Raw and fast control");
-						//Serial.printf("Gait Control: Raw and fast control\n");			
+						DBGSerial.printf("Gait Control: Raw and fast control\n");	
+						SetControllerMsg(1, "Raw and fast Cntrl");		
 					} else {
 						SmDiv *= 3;
 						SmDiv += 7;
 						MSound(1, 50, 1500 + SmDiv * 20);
 						strcpy(g_InControlState.DataPack, "Smooth control");
 						if (SmDiv > 20) strcpy(g_InControlState.DataPack, "Super Smooth ctrl!");
-						//Serial.printf("Gait Control: Smooth control\n");
+						DBGSerial.printf("Gait Control: Smooth control\n");
+						SetControllerMsg(1, "Smooth Control");
 					}
 					g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
 					g_InControlState.lWhenWeLastSetDatamode = millis();
 					_keypad_button = -1;
 				}
+
 				// Was A-D on zentas...
 				if ((_keypad_button >= '5') && (_keypad_button <= '8')) {
 					int8_t Index = _keypad_button - '5';
@@ -529,13 +540,14 @@ void USBPSXController::ControlInput(void)
 					if (g_InControlState.BodyRotOffset.y == 0) {
 						g_InControlState.BodyRotOffset.y = 200;
 						strcpy(g_InControlState.DataPack, "YRotation offset =20");
-						//Serial.printf("YRotation offset =20\n");
+						DBGSerial.printf("YRotation offset =20\n");
+						SetControllerMsg(1, "YRotation Offset=20");
 					}
 					else {
 						g_InControlState.BodyRotOffset.y = 0;
 						strcpy(g_InControlState.DataPack, "YRotation offset = 0");
-						//Serial.printf("YRotation offset = 0\n");
-
+						DBGSerial.printf("YRotation offset = 0\n");
+						SetControllerMsg(1, "YRotation Offset=20");
 					}
 					g_InControlState.DataMode = 1;//We want to send a text message to the remote when changing state
 					g_InControlState.lWhenWeLastSetDatamode = millis();
@@ -774,6 +786,8 @@ void USBPSXController::UpdateActiveDeviceInfo() {
 					DBGSerial.printf("  BDADDR: %x:%x:%x:%x:%x:%x\n", bdaddr[0], bdaddr[1], bdaddr[2], bdaddr[3], bdaddr[4], bdaddr[5]);
 					for (uint8_t i = 0; i < 6; i++) _last_bdaddr[i] = bdaddr[i];
 				}
+
+			  if(strcmp(driver_names[i],"KB1") == 0) SetControllerMsg(1, "KB connected!");
 			}
 		}
 	}
