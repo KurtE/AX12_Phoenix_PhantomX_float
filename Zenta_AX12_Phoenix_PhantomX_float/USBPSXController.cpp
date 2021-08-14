@@ -270,27 +270,43 @@ void USBPSXController::ControlInput(void)
 
 #if defined(BLUETOOTH)
 		if (ButtonPressed(BUT_PS3)) {
-			if ((joystick1.joystickType() == JoystickController::PS3) &&
-			    (_buttons & (BTN_MASKS[BUT_L1] | BTN_MASKS[BUT_R1]))) {
-				// PS button just pressed and select button pressed act like PS4 share like...
-				// Note: you can use either R1 or L1 with the PS button, to work with Sony Move Navigation...
-				DBGSerial.print("\nPS3 Pairing Request");
-				if (!_last_bdaddr[0] && !_last_bdaddr[1] && !_last_bdaddr[2] && !_last_bdaddr[3] && !_last_bdaddr[4] && !_last_bdaddr[5]) {
-					DBGSerial.println(" - failed - no Bluetooth adapter has been plugged in");
-				}
-				else if (!hiddrivers[0]) {  // Kludge see if we are connected as HID?
-					DBGSerial.println(" - failed - PS3 device not plugged into USB");
-				}
-				else {
-					DBGSerial.printf(" - Attempt pair to: %x:%x:%x:%x:%x:%x\n", _last_bdaddr[0], _last_bdaddr[1],
-					                 _last_bdaddr[2], _last_bdaddr[3], _last_bdaddr[4], _last_bdaddr[5]);
-
-					if (!joystick1.PS3Pair(_last_bdaddr)) {
-						DBGSerial.println("  Pairing call Failed");
-					}	else {
-						DBGSerial.println("  Pairing complete (I hope), make sure Bluetooth adapter is plugged in and try PS3 without USB");
-						SetControllerMsg(1, "PS3 connected!");
+			if (_buttons & (BTN_MASKS[BUT_L1] | BTN_MASKS[BUT_R1])) {
+	      if (!_last_bdaddr[0] && !_last_bdaddr[1] && !_last_bdaddr[2] && !_last_bdaddr[3] && !_last_bdaddr[4] && !_last_bdaddr[5]) {
+	        Serial.println("\nJoystick pairing Request failed - No Bluetooth adapter has been plugged in");
+				} else if (joystick1.joystickType() == JoystickController::PS3) {
+					// PS button just pressed and select button pressed act like PS4 share like...
+					// Note: you can use either R1 or L1 with the PS button, to work with Sony Move Navigation...
+					DBGSerial.print("\nPS3 Pairing Request");
+					if (!hiddrivers[0]) {  // Kludge see if we are connected as HID?
+						DBGSerial.println(" - failed - PS3 device not plugged into USB");
 					}
+					else {
+						DBGSerial.printf(" - Attempt pair to: %02X:%02X:%02X:%02X:%02X:%02X\n", _last_bdaddr[5], _last_bdaddr[4],
+						                 _last_bdaddr[3], _last_bdaddr[2], _last_bdaddr[1], _last_bdaddr[0]);
+
+						if (!joystick1.PS3Pair(_last_bdaddr)) {
+							DBGSerial.println("  Pairing call Failed");
+						}	else {
+							DBGSerial.println("  Pairing complete (I hope), make sure Bluetooth adapter is plugged in and try PS3 without USB");
+							SetControllerMsg(1, "PS3 connected!");
+						}
+					}
+				#if defined(USB_BT_PS4_PAIRING)
+				} else if (joystick1.joystickType() == JoystickController::PS4) { 
+		      uint8_t bdaddr_cur[10];
+		      Serial.print("\nPS4 Pairing Request");
+	        Serial.println("\n*** Try getting BT Pairing information ***");        
+	        if (!joystick1.PS4GetCurrentPairing(bdaddr_cur)) {
+	          Serial.println(" - failed - Could not read pairing information");
+          } else {
+            Serial.printf("Current BTADDR: %02X:%02X:%02X:%02X:%02X:%02X\n", bdaddr_cur[5],bdaddr_cur[4],bdaddr_cur[3],bdaddr_cur[2],bdaddr_cur[1],bdaddr_cur[0]);
+            if (! joystick1.PS4Pair(_last_bdaddr)) {
+              Serial.println("  Pairing call Failed");
+            } else {
+              Serial.println("  Pairing complete (I hope), make sure Bluetooth adapter is plugged in and try PS4 without USB");
+          	}
+	        }
+	      #endif  
 				}
 			}
 			else {
